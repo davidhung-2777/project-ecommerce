@@ -1,0 +1,6 @@
+Options -Indexes
+RewriteEngine On
+
+# Redirect to public folder
+RewriteCond %{REQUEST_URI} !^/project-ecommerce/public/
+RewriteRule ^project-ecommerce/(.*)$ /project-ecommerce/public/$1 [L,R=301]

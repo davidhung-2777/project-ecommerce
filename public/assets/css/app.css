@@ -1,0 +1,183 @@
+/* ==========================================================================
+   DecorNest - Warm Japandi & Scandinavian Healing Bedroom Decor CSS
+   ========================================================================== */
+
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap');
+
+:root {
+    --font-heading: 'Playfair Display', Georgia, serif;
+    --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    
+    --color-cream: #FAF7F2;
+    --color-beige: #F0EAE1;
+    --color-sand: #E4D9C8;
+    --color-wood: #B07B52;
+    --color-wooddk: #8C5934;
+    --color-charcoal: #26211E;
+    --color-muted: #7D736A;
+    --color-sage: #5F7565;
+    --color-amber: #D98848;
+}
+
+/* Base smooth scrolling & fonts */
+html {
+    scroll-behavior: smooth;
+    font-family: var(--font-sans);
+    color: var(--color-charcoal);
+    background-color: #FFFFFF;
+}
+
+body {
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    overflow-x: hidden;
+}
+
+/* Typography Helpers */
+.font-serif-title {
+    font-family: var(--font-heading);
+}
+
+.font-editorial {
+    font-family: 'Playfair Display', Georgia, serif;
+    font-style: italic;
+}
+
+/* Soft Healing Shadows */
+.shadow-warm {
+    box-shadow: 0 4px 20px -2px rgba(90, 70, 50, 0.06), 0 2px 6px -1px rgba(90, 70, 50, 0.04);
+}
+
+.shadow-warm-lg {
+    box-shadow: 0 12px 36px -4px rgba(90, 70, 50, 0.09), 0 4px 12px -2px rgba(90, 70, 50, 0.05);
+}
+
+.shadow-warm-xl {
+    box-shadow: 0 24px 48px -6px rgba(90, 70, 50, 0.12), 0 8px 16px -4px rgba(90, 70, 50, 0.06);
+}
+
+.shadow-glow {
+    box-shadow: 0 0 25px rgba(217, 136, 72, 0.15);
+}
+
+.shadow-glow-sage {
+    box-shadow: 0 0 25px rgba(95, 117, 101, 0.18);
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: #FAF7F2;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #D8CCC0;
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #B07B52;
+}
+
+/* Transitions & Interactions */
+.transition-smooth {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.hover-lift {
+    transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s ease;
+}
+
+.hover-lift:hover {
+    transform: translateY(-4px);
+}
+
+/* Glassmorphism */
+.glass-header {
+    background-color: rgba(255, 255, 255, 0.92);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+}
+
+.glass-card {
+    background: rgba(255, 255, 255, 0.85);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid rgba(240, 234, 225, 0.8);
+}
+
+/* Ambient Badge */
+.badge-healing {
+    background: linear-gradient(135deg, #FAF7F2 0%, #F0EAE1 100%);
+    border: 1px solid #E4D9C8;
+    color: #8C5934;
+}
+
+.badge-sage {
+    background: #EBF2ED;
+    color: #44594A;
+    border: 1px solid #D5E2D8;
+}
+
+/* Custom Range Input */
+input[type="range"] {
+    accent-color: #B07B52;
+}
+
+/* Hide Spinners for Number Inputs */
+input[type=number]::-webkit-inner-spin-button, 
+input[type=number]::-webkit-outer-spin-button { 
+    -webkit-appearance: none; 
+    margin: 0; 
+}
+input[type=number] {
+    -moz-appearance: textfield;
+}
+
+/* Toast Animations */
+@keyframes slideInRight {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+@keyframes fadeOut {
+    from {
+        opacity: 1;
+        transform: translateY(0);
+    }
+    to {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+}
+
+.toast-enter {
+    animation: slideInRight 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.toast-exit {
+    animation: fadeOut 0.3s ease forwards;
+}
+
+/* Subtle image shimmer placeholder */
+.shimmer-bg {
+    background: linear-gradient(90deg, #FAF7F2 0%, #F0EAE1 50%, #FAF7F2 100%);
+    background-size: 200% 100%;
+    animation: shimmer 2s infinite linear;
+}
+
+@keyframes shimmer {
+    0% { background-position: -200% 0; }
+    100% { background-position: 200% 0; }
+}

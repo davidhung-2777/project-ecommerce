@@ -1,0 +1,21 @@
+{
+    "name": "decornest/ecommerce",
+    "description": "Bedroom Decor E-commerce Platform",
+    "type": "project",
+    "require": {
+        "php": ">=8.0",
+        "vlucas/phpdotenv": "^5.5",
+        "ext-pdo": "*",
+        "ext-json": "*",
+        "ext-mbstring": "*"
+    },
+    "autoload": {
+        "psr-4": {
+            "App\\": "app/",
+            "Config\\": "config/"
+        }
+    },
+    "config": {
+        "optimize-autoloader": true
+    }
+}
