@@ -12,7 +12,8 @@ class Database
 
     private function __construct()
     {
-        $config = require ROOT_PATH . '/config/database.php';
+        $rootPath = dirname(__DIR__, 2);
+        $config = require $rootPath . '/config/database.php';
 
         $dsn = sprintf(
             '%s:host=%s;port=%s;dbname=%s;charset=%s',

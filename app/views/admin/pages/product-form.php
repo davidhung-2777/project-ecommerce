@@ -2,7 +2,12 @@
 $pageTitle = isset($product) ? 'Sửa sản phẩm' : 'Thêm sản phẩm';
 $base      = $_ENV['APP_URL'] ?? '';
 $isEdit    = isset($product);
-$action    = $isEdit ? $base . '/admin/products/' . $product['id'] . '/edit' : $base . '/admin/products/create';
+$action    = $isEdit ? $base . '/admin/products/' . ($product['id'] ?? 0) . '/edit' : $base . '/admin/products/create';
+
+// Ensure arrays exist
+$categories = $categories ?? [];
+$tiers = $tiers ?? [];
+$product = $product ?? [];
 ?>
 <div class="max-w-4xl space-y-5">
     <div class="flex items-center gap-3">
@@ -21,6 +26,7 @@ $action    = $isEdit ? $base . '/admin/products/' . $product['id'] . '/edit' : $
                 <div>
                     <label class="block text-xs font-medium text-muted mb-1.5">Tên sản phẩm *</label>
                     <input type="text" name="name" required value="<?= htmlspecialchars($product['name'] ?? '') ?>"
+                           placeholder="Nhập tên sản phẩm..."
                            class="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-wood">
                 </div>
                 <div class="grid grid-cols-2 gap-4">
@@ -33,11 +39,15 @@ $action    = $isEdit ? $base . '/admin/products/' . $product['id'] . '/edit' : $
                         <label class="block text-xs font-medium text-muted mb-1.5">Danh mục</label>
                         <select name="category_id" class="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-wood">
                             <option value="">-- Chọn danh mục --</option>
-                            <?php foreach ($categories as $cat): ?>
-                            <option value="<?= $cat['id'] ?>" <?= ($product['category_id'] ?? '') == $cat['id'] ? 'selected' : '' ?>>
-                                <?= htmlspecialchars($cat['name']) ?>
-                            </option>
-                            <?php endforeach; ?>
+                            <?php if (!empty($categories) && is_array($categories)): ?>
+                                <?php foreach ($categories as $cat): ?>
+                                <option value="<?= $cat['id'] ?? 0 ?>" <?= (($product['category_id'] ?? 0) == ($cat['id'] ?? 0)) ? 'selected' : '' ?>>
+                                    <?= htmlspecialchars($cat['name'] ?? 'N/A') ?>
+                                </option>
+                                <?php endforeach; ?>
+                            <?php else: ?>
+                                <option value="">Không có danh mục</option>
+                            <?php endif; ?>
                         </select>
                     </div>
                 </div>
@@ -176,7 +186,13 @@ $action    = $isEdit ? $base . '/admin/products/' . $product['id'] . '/edit' : $
             <div class="bg-white rounded-xl border border-gray-200 p-5 space-y-3">
                 <h2 class="font-semibold text-sm text-charcoal border-b pb-3">Ảnh đại diện</h2>
                 <?php if (!empty($product['thumbnail'])): ?>
-                <img src="<?= htmlspecialchars($product['thumbnail']) ?>" class="w-full rounded-lg">
+                <div class="mb-3">
+                    <img src="<?= $base . htmlspecialchars($product['thumbnail']) ?>" 
+                         class="w-full rounded-lg object-cover"
+                         style="max-height: 200px;"
+                         onerror="this.src='<?= $base ?>/assets/images/product-placeholder.jpg'">
+                    <p class="text-xs text-muted mt-2">Ảnh hiện tại</p>
+                </div>
                 <?php endif; ?>
                 <input type="file" name="thumbnail" accept="image/*"
                        class="w-full text-sm text-muted file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:bg-cream file:text-charcoal file:text-xs hover:file:bg-beige">
@@ -216,8 +232,21 @@ $action    = $isEdit ? $base . '/admin/products/' . $product['id'] . '/edit' : $
 <script>
 function tierForm() {
     return {
-        tiers: <?= json_encode(array_map(fn($t) => ['min_qty' => $t['min_qty'], 'max_qty' => $t['max_qty'], 'price' => $t['price'], 'label' => $t['label']], $tiers ?? [])) ?>,
-        addTier() { this.tiers.push({ min_qty: '', max_qty: '', price: '', label: '' }); }
+        tiers: <?= !empty($tiers) && is_array($tiers) ? json_encode(array_map(fn($t) => [
+            'min_qty' => $t['min_qty'] ?? '',
+            'max_qty' => $t['max_qty'] ?? '',
+            'price' => $t['price'] ?? '',
+            'label' => $t['label'] ?? ''
+        ], $tiers)) : '[]' ?>,
+        
+        addTier() { 
+            this.tiers.push({ 
+                min_qty: '', 
+                max_qty: '', 
+                price: '', 
+                label: '' 
+            }); 
+        }
     }
 }
 </script>

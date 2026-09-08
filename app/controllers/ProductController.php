@@ -127,9 +127,10 @@ class ProductController extends Controller
         $siblings   = $activeCategory
             ? $this->categoryModel->getSiblings($activeCategory['parent_id'] ?? 0)
             : [];
+        $products   = $result['data'];
 
         $this->view('pages/product-list', array_merge($result, compact(
-            'categories', 'menuTree', 'activeCategory', 'filters', 'sort', 'perPage', 'siblings'
+            'categories', 'menuTree', 'activeCategory', 'filters', 'sort', 'perPage', 'siblings', 'products'
         )));
     }
 }

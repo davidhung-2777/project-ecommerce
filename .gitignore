@@ -1,19 +1,65 @@
-# Local environment and secrets
+# Environment & Config
 .env
-.env.*
-!.env.example
+.env.local
+.env.*.local
 
 # Dependencies
 /vendor/
+node_modules/
 
-# Runtime uploads and generated files
-/public/uploads/*
-!/public/uploads/.htaccess
-
-# Local development files
+# IDE & Editors
 .vscode/
 .idea/
-*.log
-*.tmp
-Thumbs.db
+*.sublime-project
+*.sublime-workspace
 .DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+xampp/apache/logs/
+error.log
+
+# Uploads & Generated Files
+/public/uploads/*
+!/public/uploads/.gitkeep
+/public/assets/images/products/*.jpg
+/public/assets/images/products/*.png
+!/public/assets/images/products/.gitkeep
+
+# Cache & Temp
+cache/
+temp/
+tmp/
+*.tmp
+*.cache
+
+# Database Backups
+*.sql.backup
+backup/
+
+# OS Files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Desktop.ini
+
+# Composer
+composer.phar
+composer.lock
+
+# Test Files
+/tests/output/
+/tests/_support/_generated
+
+# Documentation (optional - remove if you want to include)
+# docs/
+
+# Sensitive Files (IMPORTANT!)
+config/database_backup.php
+private/
+secrets/

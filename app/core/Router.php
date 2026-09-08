@@ -33,6 +33,14 @@ class Router
             if (preg_match($pattern, $url, $matches)) {
                 array_shift($matches); // Remove full match
 
+                // Named captures are also included as numeric captures by preg_match.
+                // Keep only numeric captures so controller actions receive each parameter once.
+                $matches = array_values(array_filter(
+                    $matches,
+                    static fn (int|string $key): bool => is_int($key),
+                    ARRAY_FILTER_USE_KEY
+                ));
+
                 $controllerClass = 'App\\Controllers\\' . $route['controller'];
                 if (!class_exists($controllerClass)) {
                     $this->notFound();

@@ -64,7 +64,7 @@ class AdminController extends Controller
         $search  = $this->get('search', '');
         $filters = $search ? ['search' => $search] : [];
         $result  = $this->productModel->getFilteredAdmin($filters, $page, 20);
-        $this->view('pages/products', $result + compact('search'));
+        $this->view('pages/products', $result + compact('search'), 'main');
     }
 
     public function createProduct(): void
@@ -72,7 +72,8 @@ class AdminController extends Controller
         $this->requireAdmin();
         $categories = $this->categoryModel->getAllActive();
         $tiers = []; // Empty tiers for new product
-        $this->view('pages/product-form', compact('categories', 'tiers'));
+        $product = null; // No product for create
+        $this->view('pages/product-form', compact('categories', 'tiers', 'product'));
     }
 
     public function storeProduct(): void
@@ -116,9 +117,17 @@ class AdminController extends Controller
     public function editProduct(string $id): void
     {
         $this->requireAdmin();
-        $product    = $this->productModel->find((int) $id);
+        $product = $this->productModel->find((int) $id);
+        
+        if (!$product) {
+            $this->setFlash('error', 'Sản phẩm không tồn tại.');
+            $this->redirect($this->baseUrl('admin/products'));
+            return;
+        }
+        
         $categories = $this->categoryModel->getAllActive();
-        $tiers      = $this->tierModel->getByProduct((int) $id);
+        $tiers = $this->tierModel->getByProduct((int) $id);
+        
         $this->view('pages/product-form', compact('product', 'categories', 'tiers'));
     }
 
@@ -409,7 +418,7 @@ class AdminController extends Controller
         return [
             'category_id'   => $post['category_id'] ?: null,
             'name'          => htmlspecialchars($post['name'] ?? '', ENT_QUOTES, 'UTF-8'),
-            'slug'          => strtolower(preg_replace('/[^a-z0-9]+/i', '-', $post['name'] ?? '')),
+            'slug'          => $this->productSlug($post['name'] ?? ''),
             'sku'           => htmlspecialchars($post['sku'] ?? '', ENT_QUOTES, 'UTF-8'),
             'short_desc'    => htmlspecialchars($post['short_desc'] ?? '', ENT_QUOTES, 'UTF-8'),
             'description'   => $post['description'] ?? '',
@@ -430,6 +439,16 @@ class AdminController extends Controller
             'seo_title'     => $post['seo_title'] ?? null,
             'seo_desc'      => $post['seo_desc'] ?? null,
         ];
+    }
+
+    private function productSlug(string $name): string
+    {
+        $slug = trim((string) preg_replace('/[^a-z0-9]+/i', '-', strtolower($name)), '-');
+        if ($slug === '') {
+            $slug = 'product-' . uniqid();
+        }
+
+        return $slug;
     }
 
     private function handleImageUpload(string $fieldName): string
