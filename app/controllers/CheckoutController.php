@@ -36,6 +36,8 @@ class CheckoutController extends Controller
 
     public function index(): void
     {
+        $this->requireAuth();
+
         $cart = $this->getCart();
         if (!$cart) {
             $this->redirect($this->baseUrl('cart'));
@@ -61,6 +63,8 @@ class CheckoutController extends Controller
 
     public function process(): void
     {
+        $this->requireAuth();
+
         if (!$this->isPost()) {
             $this->redirect($this->baseUrl('checkout'));
         }

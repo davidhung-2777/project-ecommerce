@@ -313,7 +313,7 @@ Là admin → Hiển thị admin panel
 | Xem trang chủ | ✅ | ✅ | ✅ |
 | Xem sản phẩm | ✅ | ✅ | ✅ |
 | Thêm vào giỏ | ✅ | ✅ | ✅ |
-| Checkout | ✅ | ✅ | ✅ |
+| Checkout | ✅ | ✅ | ❌ |
 | Xem đơn hàng của mình | ✅ | ✅ | ❌ |
 | Xem TẤT CẢ đơn hàng | ✅ | ❌ | ❌ |
 | Tạo sản phẩm | ✅ | ❌ | ❌ |
@@ -367,7 +367,7 @@ Password: 12345678
 ✅ Có thể thêm vào giỏ
 ❌ Redirect /user/login khi truy cập /dashboard
 ❌ Redirect /user/login khi truy cập /admin
-✅ Có thể checkout (tạo đơn guest)
+❌ Bị redirect về /user/login khi checkout
 ```
 
 ### Test 4: Authorization Bypass

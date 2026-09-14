@@ -185,9 +185,16 @@ $product = $product ?? [];
             <!-- Thumbnail -->
             <div class="bg-white rounded-xl border border-gray-200 p-5 space-y-3">
                 <h2 class="font-semibold text-sm text-charcoal border-b pb-3">Ảnh đại diện</h2>
-                <?php if (!empty($product['thumbnail'])): ?>
+                <?php 
+                $thumbUrl = '';
+                if (!empty($product['thumbnail'])) {
+                    $t = $product['thumbnail'];
+                    $thumbUrl = (str_starts_with($t, 'http://') || str_starts_with($t, 'https://')) ? $t : $base . '/' . ltrim($t, '/');
+                }
+                ?>
+                <?php if ($thumbUrl): ?>
                 <div class="mb-3">
-                    <img src="<?= $base . htmlspecialchars($product['thumbnail']) ?>" 
+                    <img src="<?= htmlspecialchars($thumbUrl) ?>" 
                          class="w-full rounded-lg object-cover"
                          style="max-height: 200px;"
                          onerror="this.src='<?= $base ?>/assets/images/product-placeholder.jpg'">
