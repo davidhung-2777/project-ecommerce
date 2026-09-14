@@ -94,15 +94,21 @@ function adminImgUrl($url, $base) {
                         </td>
                         <td class="px-6 py-4 text-right">
                             <div class="flex flex-col items-end">
-                                <span class="font-semibold text-gray-900"><?= number_format($product['sale_price'] ?? $product['price']) ?>đ</span>
-                                <?php if (!empty($product['sale_price']) && $product['sale_price'] < $product['price']): ?>
-                                <span class="text-xs text-gray-400 line-through"><?= number_format($product['price']) ?>đ</span>
+                                <?php 
+                                $price = (float)($product['price'] ?? 0);
+                                $salePrice = !empty($product['sale_price']) ? (float)$product['sale_price'] : null;
+                                $displayPrice = $salePrice ?? $price;
+                                ?>
+                                <span class="font-semibold text-gray-900"><?= number_format($displayPrice, 0, ',', '.') ?>đ</span>
+                                <?php if ($salePrice !== null && $salePrice < $price && $price > 0): ?>
+                                <span class="text-xs text-gray-400 line-through"><?= number_format($price, 0, ',', '.') ?>đ</span>
                                 <?php endif; ?>
                             </div>
                         </td>
                         <td class="px-6 py-4 text-center">
-                            <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium <?= ($product['stock'] ?? 0) < 5 ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700' ?>">
-                                <?= number_format($product['stock'] ?? 0) ?>
+                            <?php $stock = (int)($product['stock'] ?? 0); ?>
+                            <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium <?= $stock < 5 ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700' ?>">
+                                <?= number_format($stock, 0, ',', '.') ?>
                             </span>
                         </td>
                         <td class="px-6 py-4 text-center">
