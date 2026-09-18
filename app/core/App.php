@@ -95,6 +95,7 @@ class App
         $r->get('/admin/products/:id/edit',   'AdminController',    'editProduct');
         $r->post('/admin/products/:id/edit',  'AdminController',    'updateProduct');
         $r->post('/admin/products/:id/delete','AdminController',    'deleteProduct');
+        $r->post('/admin/products/:id/toggle-status','AdminController','toggleProductStatus');
 
         $r->get('/admin/categories',          'AdminController',    'categories');
         $r->post('/admin/categories/create',  'AdminController',    'storeCategory');

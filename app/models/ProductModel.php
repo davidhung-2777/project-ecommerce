@@ -117,7 +117,17 @@ class ProductModel extends Model
         if (!empty($filters['search'])) {
             $conditions[] = '(p.name LIKE ? OR p.short_desc LIKE ? OR p.sku LIKE ?)';
             $term = '%' . $filters['search'] . '%';
-            $params = [$term, $term, $term];
+            $params = array_merge($params, [$term, $term, $term]);
+        }
+
+        if (!empty($filters['category_id'])) {
+            $conditions[] = 'p.category_id = ?';
+            $params[] = (int) $filters['category_id'];
+        }
+
+        if (isset($filters['status']) && $filters['status'] !== '') {
+            $conditions[] = 'p.is_active = ?';
+            $params[] = (int) $filters['status'];
         }
 
         $where = $conditions ? implode(' AND ', $conditions) : '1=1';

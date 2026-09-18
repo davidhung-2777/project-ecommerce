@@ -1,236 +1,355 @@
 <?php
-$pageTitle = isset($product) ? 'Sửa sản phẩm' : 'Thêm sản phẩm';
+$isEdit    = !empty($product['id']);
+$pageTitle = $isEdit ? 'Sửa sản phẩm: ' . htmlspecialchars($product['name'] ?? '') : 'Thêm sản phẩm mới';
 $base      = $_ENV['APP_URL'] ?? '';
-$isEdit    = isset($product);
-$action    = $isEdit ? $base . '/admin/products/' . ($product['id'] ?? 0) . '/edit' : $base . '/admin/products/create';
+$action    = $isEdit ? $base . '/admin/products/' . (int)$product['id'] . '/edit' : $base . '/admin/products/create';
 
 // Ensure arrays exist
 $categories = $categories ?? [];
-$tiers = $tiers ?? [];
-$product = $product ?? [];
+$tiers      = $tiers ?? [];
+$product    = $product ?? [];
+
+// Decode gallery images
+$galleryImages = [];
+if (!empty($product['images'])) {
+    $galleryImages = is_array($product['images']) ? $product['images'] : (json_decode($product['images'], true) ?: []);
+}
+
+if (!function_exists('adminImgUrl')) {
+    function adminImgUrl($url, $base) {
+        if (empty($url)) return $base . '/assets/images/product-placeholder.jpg';
+        if (str_starts_with($url, 'http://') || str_starts_with($url, 'https://')) return $url;
+        return rtrim($base, '/') . '/' . ltrim($url, '/');
+    }
+}
 ?>
-<div class="max-w-4xl space-y-5">
-    <div class="flex items-center gap-3">
-        <a href="<?= $base ?>/admin/products" class="text-muted hover:text-charcoal text-sm">← Sản phẩm</a>
-        <span class="text-muted">/</span>
-        <h1 class="text-xl font-bold text-charcoal"><?= $pageTitle ?></h1>
+
+<div class="max-w-5xl space-y-6">
+    <!-- Breadcrumb & Title -->
+    <div class="flex items-center justify-between">
+        <div class="flex items-center gap-3">
+            <a href="<?= $base ?>/admin/products" class="text-xs font-semibold text-wood hover:underline flex items-center gap-1">
+                <span>←</span>
+                <span>Danh sách sản phẩm</span>
+            </a>
+            <span class="text-gray-300">/</span>
+            <h1 class="text-xl sm:text-2xl font-bold text-charcoal"><?= $isEdit ? 'Chỉnh sửa sản phẩm' : 'Thêm sản phẩm mới' ?></h1>
+        </div>
+        <a href="<?= $base ?>/admin/products" class="px-4 py-2 rounded-xl border border-gray-200 text-xs font-semibold text-charcoal hover:bg-gray-100 transition">
+            Hủy bỏ
+        </a>
     </div>
 
-    <form action="<?= $action ?>" method="POST" enctype="multipart/form-data" class="grid lg:grid-cols-3 gap-6">
+    <form action="<?= $action ?>" method="POST" enctype="multipart/form-data" class="grid lg:grid-cols-12 gap-6">
 
-        <!-- Main Info -->
-        <div class="lg:col-span-2 space-y-5">
+        <!-- Left Column: Main Info (8 cols) -->
+        <div class="lg:col-span-8 space-y-6">
 
-            <div class="bg-white rounded-xl border border-gray-200 p-5 space-y-4">
-                <h2 class="font-semibold text-sm text-charcoal border-b pb-3">Thông tin cơ bản</h2>
+            <!-- Basic Info Card -->
+            <div class="bg-white rounded-2xl border border-gray-200 p-6 space-y-4 shadow-sm">
+                <h2 class="font-bold text-sm text-charcoal pb-3 border-b border-gray-100 flex items-center gap-2">
+                    <span>📝</span>
+                    <span>Thông tin cơ bản</span>
+                </h2>
+                
                 <div>
-                    <label class="block text-xs font-medium text-muted mb-1.5">Tên sản phẩm *</label>
+                    <label class="block text-xs font-bold text-charcoal uppercase tracking-wider mb-1.5">Tên sản phẩm decor *</label>
                     <input type="text" name="name" required value="<?= htmlspecialchars($product['name'] ?? '') ?>"
-                           placeholder="Nhập tên sản phẩm..."
-                           class="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-wood">
+                           placeholder="Ví dụ: Đèn ngủ gỗ sồi phong cách Japandi..."
+                           class="w-full rounded-xl border border-gray-200 bg-gray-50/50 px-4 py-3 text-xs sm:text-sm text-charcoal outline-none transition focus:bg-white focus:border-wood focus:ring-2 focus:ring-wood/20">
                 </div>
-                <div class="grid grid-cols-2 gap-4">
+
+                <div class="grid sm:grid-cols-2 gap-4">
                     <div>
-                        <label class="block text-xs font-medium text-muted mb-1.5">SKU</label>
+                        <label class="block text-xs font-bold text-charcoal uppercase tracking-wider mb-1.5">Mã SKU</label>
                         <input type="text" name="sku" value="<?= htmlspecialchars($product['sku'] ?? '') ?>"
-                               class="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-wood">
+                               placeholder="VD: DN-LAMP-01"
+                               class="w-full rounded-xl border border-gray-200 bg-gray-50/50 px-4 py-2.5 text-xs sm:text-sm text-charcoal outline-none transition focus:bg-white focus:border-wood focus:ring-2 focus:ring-wood/20">
                     </div>
                     <div>
-                        <label class="block text-xs font-medium text-muted mb-1.5">Danh mục</label>
-                        <select name="category_id" class="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-wood">
+                        <label class="block text-xs font-bold text-charcoal uppercase tracking-wider mb-1.5">Danh mục</label>
+                        <select name="category_id" class="w-full rounded-xl border border-gray-200 bg-gray-50/50 px-3 py-2.5 text-xs sm:text-sm text-charcoal outline-none transition focus:bg-white focus:border-wood focus:ring-2 focus:ring-wood/20">
                             <option value="">-- Chọn danh mục --</option>
-                            <?php if (!empty($categories) && is_array($categories)): ?>
-                                <?php foreach ($categories as $cat): ?>
-                                <option value="<?= $cat['id'] ?? 0 ?>" <?= (($product['category_id'] ?? 0) == ($cat['id'] ?? 0)) ? 'selected' : '' ?>>
-                                    <?= htmlspecialchars($cat['name'] ?? 'N/A') ?>
-                                </option>
-                                <?php endforeach; ?>
-                            <?php else: ?>
-                                <option value="">Không có danh mục</option>
-                            <?php endif; ?>
+                            <?php foreach ($categories as $cat): ?>
+                            <option value="<?= $cat['id'] ?>" <?= ((int)($product['category_id'] ?? 0) === (int)$cat['id']) ? 'selected' : '' ?>>
+                                <?= htmlspecialchars($cat['name']) ?>
+                            </option>
+                            <?php endforeach; ?>
                         </select>
                     </div>
                 </div>
+
                 <div>
-                    <label class="block text-xs font-medium text-muted mb-1.5">Mô tả ngắn</label>
-                    <textarea name="short_desc" rows="2"
-                              class="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-wood resize-none"><?= htmlspecialchars($product['short_desc'] ?? '') ?></textarea>
+                    <label class="block text-xs font-bold text-charcoal uppercase tracking-wider mb-1.5">Mô tả ngắn (Hiển thị đầu trang)</label>
+                    <textarea name="short_desc" rows="2" placeholder="Tóm tắt những điểm nổi bật của sản phẩm..."
+                              class="w-full rounded-xl border border-gray-200 bg-gray-50/50 px-4 py-2.5 text-xs sm:text-sm text-charcoal outline-none transition focus:bg-white focus:border-wood focus:ring-2 focus:ring-wood/20 resize-none"><?= htmlspecialchars($product['short_desc'] ?? '') ?></textarea>
                 </div>
+
                 <div>
-                    <label class="block text-xs font-medium text-muted mb-1.5">Mô tả chi tiết</label>
-                    <textarea name="description" rows="6"
-                              class="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-wood resize-none"><?= htmlspecialchars($product['description'] ?? '') ?></textarea>
+                    <label class="block text-xs font-bold text-charcoal uppercase tracking-wider mb-1.5">Mô tả chi tiết & Câu chuyện chữa lành</label>
+                    <textarea name="description" rows="6" placeholder="Mô tả kỹ lưỡng về chất liệu, nguồn cảm hứng, hướng dẫn bài trí trong phòng ngủ..."
+                              class="w-full rounded-xl border border-gray-200 bg-gray-50/50 px-4 py-3 text-xs sm:text-sm text-charcoal outline-none transition focus:bg-white focus:border-wood focus:ring-2 focus:ring-wood/20"><?= htmlspecialchars($product['description'] ?? '') ?></textarea>
                 </div>
             </div>
 
-            <!-- Pricing -->
-            <div class="bg-white rounded-xl border border-gray-200 p-5 space-y-4">
-                <h2 class="font-semibold text-sm text-charcoal border-b pb-3">Giá bán</h2>
-                <div class="grid grid-cols-3 gap-4">
+            <!-- Pricing & Bulk Tiers Card -->
+            <div class="bg-white rounded-2xl border border-gray-200 p-6 space-y-4 shadow-sm">
+                <h2 class="font-bold text-sm text-charcoal pb-3 border-b border-gray-100 flex items-center gap-2">
+                    <span>🏷️</span>
+                    <span>Giá bán & Chiết khấu</span>
+                </h2>
+
+                <div class="grid sm:grid-cols-3 gap-4">
                     <div>
-                        <label class="block text-xs font-medium text-muted mb-1.5">Giá niêm yết (đ) *</label>
+                        <label class="block text-xs font-bold text-charcoal uppercase tracking-wider mb-1.5">Giá niêm yết (đ) *</label>
                         <input type="number" name="price" required step="1000" min="0"
                                value="<?= htmlspecialchars($product['price'] ?? '') ?>"
-                               class="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-wood">
+                               placeholder="590000"
+                               class="w-full rounded-xl border border-gray-200 bg-gray-50/50 px-4 py-2.5 text-xs sm:text-sm font-semibold text-charcoal outline-none transition focus:bg-white focus:border-wood focus:ring-2 focus:ring-wood/20">
                     </div>
                     <div>
-                        <label class="block text-xs font-medium text-muted mb-1.5">Giá khuyến mãi (đ)</label>
+                        <label class="block text-xs font-bold text-charcoal uppercase tracking-wider mb-1.5">Giá khuyến mãi (đ)</label>
                         <input type="number" name="sale_price" step="1000" min="0"
                                value="<?= htmlspecialchars($product['sale_price'] ?? '') ?>"
-                               class="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-wood">
+                               placeholder="Để trống nếu không giảm"
+                               class="w-full rounded-xl border border-gray-200 bg-gray-50/50 px-4 py-2.5 text-xs sm:text-sm font-semibold text-wood outline-none transition focus:bg-white focus:border-wood focus:ring-2 focus:ring-wood/20">
                     </div>
                     <div>
-                        <label class="block text-xs font-medium text-muted mb-1.5">Phí lắp đặt (đ)</label>
+                        <label class="block text-xs font-bold text-charcoal uppercase tracking-wider mb-1.5">Phí lắp đặt (đ)</label>
                         <input type="number" name="install_fee" step="1000" min="0"
                                value="<?= htmlspecialchars($product['install_fee'] ?? 0) ?>"
-                               class="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-wood">
+                               placeholder="0"
+                               class="w-full rounded-xl border border-gray-200 bg-gray-50/50 px-4 py-2.5 text-xs sm:text-sm text-charcoal outline-none transition focus:bg-white focus:border-wood focus:ring-2 focus:ring-wood/20">
                     </div>
                 </div>
 
-                <!-- Bulk Pricing Tiers -->
-                <div x-data="tierForm()" class="border-t border-gray-100 pt-4">
+                <!-- Bulk Price Tiers Form (Alpine) -->
+                <div x-data="tierForm()" class="border-t border-gray-100 pt-4 mt-2">
                     <div class="flex items-center justify-between mb-3">
-                        <h3 class="text-xs font-semibold text-charcoal uppercase tracking-wide">Giá sỉ theo số lượng</h3>
-                        <button type="button" @click="addTier()" class="text-xs text-wood hover:underline">+ Thêm bậc giá</button>
-                    </div>
-                    <template x-for="(tier, i) in tiers" :key="i">
-                        <div class="grid grid-cols-5 gap-3 mb-2 items-center">
-                            <div>
-                                <input type="number" :name="'tiers[' + i + '][min_qty]'" x-model="tier.min_qty" placeholder="SL tối thiểu" min="1" required
-                                       class="w-full border border-gray-200 rounded-lg px-3 py-2 text-xs focus:outline-none focus:border-wood">
-                            </div>
-                            <div>
-                                <input type="number" :name="'tiers[' + i + '][max_qty]'" x-model="tier.max_qty" placeholder="SL tối đa (để trống = không giới hạn)"
-                                       class="w-full border border-gray-200 rounded-lg px-3 py-2 text-xs focus:outline-none focus:border-wood">
-                            </div>
-                            <div>
-                                <input type="number" :name="'tiers[' + i + '][price]'" x-model="tier.price" placeholder="Đơn giá (đ)" required step="1000" min="0"
-                                       class="w-full border border-gray-200 rounded-lg px-3 py-2 text-xs focus:outline-none focus:border-wood">
-                            </div>
-                            <div>
-                                <input type="text" :name="'tiers[' + i + '][label]'" x-model="tier.label" placeholder="Nhãn (VD: Giá sỉ)"
-                                       class="w-full border border-gray-200 rounded-lg px-3 py-2 text-xs focus:outline-none focus:border-wood">
-                            </div>
-                            <button type="button" @click="tiers.splice(i, 1)" class="text-red-400 hover:text-red-600">✕</button>
+                        <div>
+                            <h3 class="text-xs font-bold text-charcoal uppercase tracking-wider">Bảng giá sỉ dự án (B2B Tiers)</h3>
+                            <p class="text-[11px] text-muted">Ưu đãi giảm giá tự động theo số lượng khi mua sỉ</p>
                         </div>
-                    </template>
-                    <p class="text-xs text-muted mt-1">Tip: SL tối đa để trống = "không giới hạn"</p>
+                        <button type="button" @click="addTier()" class="px-3 py-1.5 rounded-lg bg-cream text-wood hover:bg-beige text-xs font-bold transition flex items-center gap-1">
+                            <span>+ Thêm bậc giá</span>
+                        </button>
+                    </div>
+
+                    <div class="space-y-2.5">
+                        <template x-for="(tier, i) in tiers" :key="i">
+                            <div class="grid grid-cols-12 gap-2.5 items-center p-3 rounded-xl bg-gray-50 border border-gray-200">
+                                <div class="col-span-3">
+                                    <label class="block text-[10px] text-muted font-bold uppercase mb-1">SL Tối thiểu</label>
+                                    <input type="number" :name="'tiers[' + i + '][min_qty]'" x-model="tier.min_qty" placeholder="VD: 5" min="1" required
+                                           class="w-full rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium">
+                                </div>
+                                <div class="col-span-3">
+                                    <label class="block text-[10px] text-muted font-bold uppercase mb-1">SL Tối đa</label>
+                                    <input type="number" :name="'tiers[' + i + '][max_qty]'" x-model="tier.max_qty" placeholder="Trống = ∞"
+                                           class="w-full rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium">
+                                </div>
+                                <div class="col-span-3">
+                                    <label class="block text-[10px] text-muted font-bold uppercase mb-1">Đơn giá sỉ (đ)</label>
+                                    <input type="number" :name="'tiers[' + i + '][price]'" x-model="tier.price" placeholder="450000" required step="1000" min="0"
+                                           class="w-full rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-bold text-wood">
+                                </div>
+                                <div class="col-span-2">
+                                    <label class="block text-[10px] text-muted font-bold uppercase mb-1">Nhãn</label>
+                                    <input type="text" :name="'tiers[' + i + '][label]'" x-model="tier.label" placeholder="Giá sỉ"
+                                           class="w-full rounded-lg border border-gray-200 bg-white px-2 py-1.5 text-xs">
+                                </div>
+                                <div class="col-span-1 flex justify-end pt-4">
+                                    <button type="button" @click="tiers.splice(i, 1)" class="p-1 text-red-400 hover:text-red-600 transition" title="Xóa bậc giá">
+                                        ✕
+                                    </button>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
                 </div>
             </div>
 
-            <!-- Inventory -->
-            <div class="bg-white rounded-xl border border-gray-200 p-5 space-y-4">
-                <h2 class="font-semibold text-sm text-charcoal border-b pb-3">Tồn kho & Chi tiết</h2>
-                <div class="grid grid-cols-2 gap-4">
+            <!-- Specifications Card -->
+            <div class="bg-white rounded-2xl border border-gray-200 p-6 space-y-4 shadow-sm">
+                <h2 class="font-bold text-sm text-charcoal pb-3 border-b border-gray-100 flex items-center gap-2">
+                    <span>📐</span>
+                    <span>Quy cách & Tồn kho</span>
+                </h2>
+
+                <div class="grid sm:grid-cols-2 gap-4">
                     <div>
-                        <label class="block text-xs font-medium text-muted mb-1.5">Số lượng tồn kho *</label>
+                        <label class="block text-xs font-bold text-charcoal uppercase tracking-wider mb-1.5">Số lượng tồn kho *</label>
                         <input type="number" name="stock" required min="0"
-                               value="<?= htmlspecialchars($product['stock'] ?? 0) ?>"
-                               class="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-wood">
+                               value="<?= htmlspecialchars($product['stock'] ?? 10) ?>"
+                               class="w-full rounded-xl border border-gray-200 bg-gray-50/50 px-4 py-2.5 text-xs sm:text-sm font-semibold text-charcoal outline-none transition focus:bg-white focus:border-wood focus:ring-2 focus:ring-wood/20">
                     </div>
                     <div>
-                        <label class="block text-xs font-medium text-muted mb-1.5">Xuất xứ</label>
+                        <label class="block text-xs font-bold text-charcoal uppercase tracking-wider mb-1.5">Xuất xứ</label>
                         <input type="text" name="origin" value="<?= htmlspecialchars($product['origin'] ?? '') ?>"
-                               class="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-wood">
+                               placeholder="VD: Việt Nam, Nhật Bản..."
+                               class="w-full rounded-xl border border-gray-200 bg-gray-50/50 px-4 py-2.5 text-xs sm:text-sm text-charcoal outline-none transition focus:bg-white focus:border-wood focus:ring-2 focus:ring-wood/20">
                     </div>
                     <div>
-                        <label class="block text-xs font-medium text-muted mb-1.5">Chất liệu</label>
+                        <label class="block text-xs font-bold text-charcoal uppercase tracking-wider mb-1.5">Chất liệu</label>
                         <input type="text" name="material" value="<?= htmlspecialchars($product['material'] ?? '') ?>"
-                               class="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-wood">
+                               placeholder="VD: Gỗ sồi tự nhiên, vải lanh..."
+                               class="w-full rounded-xl border border-gray-200 bg-gray-50/50 px-4 py-2.5 text-xs sm:text-sm text-charcoal outline-none transition focus:bg-white focus:border-wood focus:ring-2 focus:ring-wood/20">
                     </div>
                     <div>
-                        <label class="block text-xs font-medium text-muted mb-1.5">Kích thước</label>
-                        <input type="text" name="dimensions" placeholder="VD: 160x200x30cm" value="<?= htmlspecialchars($product['dimensions'] ?? '') ?>"
-                               class="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-wood">
+                        <label class="block text-xs font-bold text-charcoal uppercase tracking-wider mb-1.5">Kích thước</label>
+                        <input type="text" name="dimensions" placeholder="VD: 35 x 45 x 60 cm" value="<?= htmlspecialchars($product['dimensions'] ?? '') ?>"
+                               class="w-full rounded-xl border border-gray-200 bg-gray-50/50 px-4 py-2.5 text-xs sm:text-sm text-charcoal outline-none transition focus:bg-white focus:border-wood focus:ring-2 focus:ring-wood/20">
                     </div>
                     <div>
-                        <label class="block text-xs font-medium text-muted mb-1.5">Kích thước biến thể (phân tách bằng dấu phẩy)</label>
-                        <input type="text" name="size_options" placeholder="VD: 1.2m, 1.4m, 1.6m, 1.8m"
-                               value="<?= htmlspecialchars(implode(', ', json_decode($product['size_options'] ?? '[]', true) ?: [])) ?>"
-                               class="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-wood">
+                        <label class="block text-xs font-bold text-charcoal uppercase tracking-wider mb-1.5">Kích thước biến thể (phân cách bằng dấu phẩy)</label>
+                        <?php 
+                        $sizeVal = '';
+                        if (!empty($product['size_options'])) {
+                            $sizeArr = is_array($product['size_options']) ? $product['size_options'] : json_decode($product['size_options'], true);
+                            $sizeVal = is_array($sizeArr) ? implode(', ', $sizeArr) : $product['size_options'];
+                        }
+                        ?>
+                        <input type="text" name="size_options" placeholder="VD: Tiêu chuẩn, Lớn, Đôi..."
+                               value="<?= htmlspecialchars($sizeVal) ?>"
+                               class="w-full rounded-xl border border-gray-200 bg-gray-50/50 px-4 py-2.5 text-xs sm:text-sm text-charcoal outline-none transition focus:bg-white focus:border-wood focus:ring-2 focus:ring-wood/20">
                     </div>
                     <div>
-                        <label class="block text-xs font-medium text-muted mb-1.5">Màu sắc biến thể (phân tách bằng dấu phẩy)</label>
-                        <input type="text" name="color_options" placeholder="VD: Trắng, Be, Nâu gỗ"
-                               value="<?= htmlspecialchars(implode(', ', json_decode($product['color_options'] ?? '[]', true) ?: [])) ?>"
-                               class="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-wood">
+                        <label class="block text-xs font-bold text-charcoal uppercase tracking-wider mb-1.5">Màu sắc biến thể (phân cách bằng dấu phẩy)</label>
+                        <?php 
+                        $colorVal = '';
+                        if (!empty($product['color_options'])) {
+                            $colorArr = is_array($product['color_options']) ? $product['color_options'] : json_decode($product['color_options'], true);
+                            $colorVal = is_array($colorArr) ? implode(', ', $colorArr) : $product['color_options'];
+                        }
+                        ?>
+                        <input type="text" name="color_options" placeholder="VD: Be mộc, Nâu sồi, Trắng ngà..."
+                               value="<?= htmlspecialchars($colorVal) ?>"
+                               class="w-full rounded-xl border border-gray-200 bg-gray-50/50 px-4 py-2.5 text-xs sm:text-sm text-charcoal outline-none transition focus:bg-white focus:border-wood focus:ring-2 focus:ring-wood/20">
                     </div>
                 </div>
             </div>
+
         </div>
 
-        <!-- Right Panel -->
-        <div class="space-y-5">
+        <!-- Right Column: Thumbnail, Status, Gallery & SEO (4 cols) -->
+        <div class="lg:col-span-4 space-y-6">
 
-            <!-- Status -->
-            <div class="bg-white rounded-xl border border-gray-200 p-5 space-y-4">
-                <h2 class="font-semibold text-sm text-charcoal border-b pb-3">Trạng thái</h2>
-                <label class="flex items-center gap-2 cursor-pointer text-sm">
-                    <input type="checkbox" name="is_active" value="1" <?= ($product['is_active'] ?? 1) ? 'checked' : '' ?>
-                           class="rounded text-charcoal">
-                    Hiển thị trên website
+            <!-- Publish Status Card -->
+            <div class="bg-white rounded-2xl border border-gray-200 p-6 space-y-3.5 shadow-sm">
+                <h2 class="font-bold text-sm text-charcoal pb-3 border-b border-gray-100 flex items-center gap-2">
+                    <span>⚙️</span>
+                    <span>Trạng thái hiển thị</span>
+                </h2>
+
+                <label class="flex items-center gap-3 p-2.5 rounded-xl hover:bg-cream/40 cursor-pointer transition border border-transparent hover:border-beige">
+                    <input type="checkbox" name="is_active" value="1" <?= (!isset($product['is_active']) || $product['is_active']) ? 'checked' : '' ?>
+                           class="w-4 h-4 rounded text-charcoal accent-wood">
+                    <div>
+                        <span class="text-xs font-bold text-charcoal block">Hiển thị trên website</span>
+                        <span class="text-[11px] text-muted">Khách hàng có thể tìm và mua</span>
+                    </div>
                 </label>
-                <label class="flex items-center gap-2 cursor-pointer text-sm">
-                    <input type="checkbox" name="is_featured" value="1" <?= ($product['is_featured'] ?? 0) ? 'checked' : '' ?>
-                           class="rounded text-charcoal">
-                    Sản phẩm nổi bật
+
+                <label class="flex items-center gap-3 p-2.5 rounded-xl hover:bg-cream/40 cursor-pointer transition border border-transparent hover:border-beige">
+                    <input type="checkbox" name="is_featured" value="1" <?= (!empty($product['is_featured'])) ? 'checked' : '' ?>
+                           class="w-4 h-4 rounded text-charcoal accent-wood">
+                    <div>
+                        <span class="text-xs font-bold text-charcoal block">Sản phẩm nổi bật</span>
+                        <span class="text-[11px] text-muted">Ưu tiên hiển thị tại trang chủ</span>
+                    </div>
                 </label>
-                <label class="flex items-center gap-2 cursor-pointer text-sm">
-                    <input type="checkbox" name="is_new" value="1" <?= ($product['is_new'] ?? 0) ? 'checked' : '' ?>
-                           class="rounded text-charcoal">
-                    Hàng mới về
+
+                <label class="flex items-center gap-3 p-2.5 rounded-xl hover:bg-cream/40 cursor-pointer transition border border-transparent hover:border-beige">
+                    <input type="checkbox" name="is_new" value="1" <?= (!empty($product['is_new'])) ? 'checked' : '' ?>
+                           class="w-4 h-4 rounded text-charcoal accent-wood">
+                    <div>
+                        <span class="text-xs font-bold text-charcoal block">Hàng mới về (New)</span>
+                        <span class="text-[11px] text-muted">Gắn nhãn New trong danh mục</span>
+                    </div>
                 </label>
             </div>
 
-            <!-- Thumbnail -->
-            <div class="bg-white rounded-xl border border-gray-200 p-5 space-y-3">
-                <h2 class="font-semibold text-sm text-charcoal border-b pb-3">Ảnh đại diện</h2>
-                <?php 
-                $thumbUrl = '';
-                if (!empty($product['thumbnail'])) {
-                    $t = $product['thumbnail'];
-                    $thumbUrl = (str_starts_with($t, 'http://') || str_starts_with($t, 'https://')) ? $t : $base . '/' . ltrim($t, '/');
-                }
-                ?>
-                <?php if ($thumbUrl): ?>
-                <div class="mb-3">
-                    <img src="<?= htmlspecialchars($thumbUrl) ?>" 
-                         class="w-full rounded-lg object-cover"
-                         style="max-height: 200px;"
-                         onerror="this.src='<?= $base ?>/assets/images/product-placeholder.jpg'">
-                    <p class="text-xs text-muted mt-2">Ảnh hiện tại</p>
+            <!-- Thumbnail Upload Card -->
+            <div class="bg-white rounded-2xl border border-gray-200 p-6 space-y-4 shadow-sm">
+                <h2 class="font-bold text-sm text-charcoal pb-3 border-b border-gray-100 flex items-center gap-2">
+                    <span>🖼️</span>
+                    <span>Ảnh đại diện</span>
+                </h2>
+
+                <div id="thumb-preview-box" class="w-full h-44 rounded-xl overflow-hidden bg-cream border border-beige flex items-center justify-center relative">
+                    <img id="thumb-preview-img" 
+                         src="<?= adminImgUrl($product['thumbnail'] ?? '', $base) ?>" 
+                         alt="Xem trước ảnh" 
+                         class="w-full h-full object-cover"
+                         onerror="this.src='<?= $base ?>/assets/images/product-placeholder.jpg'; this.onerror=null;">
+                </div>
+
+                <div>
+                    <label class="block text-[11px] font-bold text-muted uppercase tracking-wider mb-1.5">Tải ảnh mới (JPG, PNG, WebP &lt; 5MB)</label>
+                    <input type="file" name="thumbnail" accept="image/*" id="thumb-input"
+                           class="w-full text-xs text-muted file:mr-3 file:py-2 file:px-3.5 file:rounded-xl file:border-0 file:bg-cream file:text-charcoal file:text-xs file:font-semibold hover:file:bg-beige file:cursor-pointer">
+                </div>
+            </div>
+
+            <!-- Gallery Upload Card -->
+            <div class="bg-white rounded-2xl border border-gray-200 p-6 space-y-4 shadow-sm">
+                <h2 class="font-bold text-sm text-charcoal pb-3 border-b border-gray-100 flex items-center gap-2">
+                    <span>📸</span>
+                    <span>Bộ sưu tập ảnh chi tiết</span>
+                </h2>
+
+                <?php if (!empty($galleryImages)): ?>
+                <div>
+                    <p class="text-[11px] font-bold text-muted uppercase mb-2">Ảnh hiện có trong bộ sưu tập:</p>
+                    <div class="grid grid-cols-3 gap-2">
+                        <?php foreach ($galleryImages as $gImg): ?>
+                        <div class="w-full h-16 rounded-lg overflow-hidden bg-cream border border-beige">
+                            <img src="<?= adminImgUrl($gImg, $base) ?>" class="w-full h-full object-cover" onerror="this.src='<?= $base ?>/assets/images/product-placeholder.jpg'">
+                        </div>
+                        <?php endforeach; ?>
+                    </div>
                 </div>
                 <?php endif; ?>
-                <input type="file" name="thumbnail" accept="image/*"
-                       class="w-full text-sm text-muted file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:bg-cream file:text-charcoal file:text-xs hover:file:bg-beige">
-                <p class="text-xs text-muted">JPG, PNG, WebP. Tối đa 5MB.</p>
-            </div>
 
-            <!-- Gallery -->
-            <div class="bg-white rounded-xl border border-gray-200 p-5 space-y-3">
-                <h2 class="font-semibold text-sm text-charcoal border-b pb-3">Bộ sưu tập ảnh</h2>
-                <input type="file" name="images[]" accept="image/*" multiple
-                       class="w-full text-sm text-muted file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:bg-cream file:text-charcoal file:text-xs hover:file:bg-beige">
-            </div>
-
-            <!-- SEO -->
-            <div class="bg-white rounded-xl border border-gray-200 p-5 space-y-3">
-                <h2 class="font-semibold text-sm text-charcoal border-b pb-3">SEO</h2>
                 <div>
-                    <label class="block text-xs font-medium text-muted mb-1">Meta Title</label>
+                    <label class="block text-[11px] font-bold text-muted uppercase tracking-wider mb-1.5">Thêm ảnh mới vào bộ sưu tập</label>
+                    <input type="file" name="images[]" accept="image/*" multiple
+                           class="w-full text-xs text-muted file:mr-3 file:py-2 file:px-3.5 file:rounded-xl file:border-0 file:bg-cream file:text-charcoal file:text-xs file:font-semibold hover:file:bg-beige file:cursor-pointer">
+                    <p class="text-[10px] text-muted mt-1.5">Có thể chọn nhiều file ảnh cùng lúc.</p>
+                </div>
+            </div>
+
+            <!-- SEO Settings Card -->
+            <div class="bg-white rounded-2xl border border-gray-200 p-6 space-y-3.5 shadow-sm">
+                <h2 class="font-bold text-sm text-charcoal pb-3 border-b border-gray-100 flex items-center gap-2">
+                    <span>🌐</span>
+                    <span>Tối ưu hóa SEO</span>
+                </h2>
+                <div>
+                    <label class="block text-[11px] font-bold text-muted uppercase tracking-wider mb-1">Meta Title</label>
                     <input type="text" name="seo_title" value="<?= htmlspecialchars($product['seo_title'] ?? '') ?>"
-                           class="w-full border border-gray-200 rounded-lg px-3 py-2 text-xs focus:outline-none focus:border-wood">
+                           placeholder="Tiêu đề hiển thị trên Google..."
+                           class="w-full rounded-xl border border-gray-200 bg-gray-50/50 px-3 py-2 text-xs text-charcoal outline-none focus:bg-white focus:border-wood">
                 </div>
                 <div>
-                    <label class="block text-xs font-medium text-muted mb-1">Meta Description</label>
-                    <textarea name="seo_desc" rows="3"
-                              class="w-full border border-gray-200 rounded-lg px-3 py-2 text-xs focus:outline-none focus:border-wood resize-none"><?= htmlspecialchars($product['seo_desc'] ?? '') ?></textarea>
+                    <label class="block text-[11px] font-bold text-muted uppercase tracking-wider mb-1">Meta Description</label>
+                    <textarea name="seo_desc" rows="2" placeholder="Đoạn trích tóm tắt trên công cụ tìm kiếm..."
+                              class="w-full rounded-xl border border-gray-200 bg-gray-50/50 px-3 py-2 text-xs text-charcoal outline-none focus:bg-white focus:border-wood resize-none"><?= htmlspecialchars($product['seo_desc'] ?? '') ?></textarea>
                 </div>
             </div>
 
-            <button type="submit" class="w-full bg-charcoal text-white py-3 rounded-xl text-sm font-semibold hover:bg-wooddk transition">
-                <?= $isEdit ? 'Cập nhật sản phẩm' : 'Tạo sản phẩm' ?>
-            </button>
+            <!-- Form Submit CTA -->
+            <div class="space-y-3">
+                <button type="submit" 
+                        class="w-full rounded-2xl bg-charcoal text-white py-4 text-xs font-bold uppercase tracking-wider hover:bg-wooddk transition-all duration-200 shadow-warm hover:shadow-warm-lg flex items-center justify-center gap-2">
+                    <span><?= $isEdit ? '✓ Cập nhật sản phẩm' : '✓ Lưu sản phẩm mới' ?></span>
+                </button>
+                <a href="<?= $base ?>/admin/products" 
+                   class="w-full inline-block text-center py-3 rounded-2xl border border-gray-200 bg-white text-xs font-semibold text-charcoal hover:bg-gray-50 transition">
+                    Hủy và quay lại
+                </a>
+            </div>
+
         </div>
 
     </form>
@@ -242,8 +361,8 @@ function tierForm() {
         tiers: <?= !empty($tiers) && is_array($tiers) ? json_encode(array_map(fn($t) => [
             'min_qty' => $t['min_qty'] ?? '',
             'max_qty' => $t['max_qty'] ?? '',
-            'price' => $t['price'] ?? '',
-            'label' => $t['label'] ?? ''
+            'price'   => $t['price'] ?? '',
+            'label'   => $t['label'] ?? ''
         ], $tiers)) : '[]' ?>,
         
         addTier() { 
@@ -256,4 +375,22 @@ function tierForm() {
         }
     }
 }
+
+// Live thumbnail image preview
+document.addEventListener('DOMContentLoaded', function() {
+    const thumbInput = document.getElementById('thumb-input');
+    const previewImg = document.getElementById('thumb-preview-img');
+    if (thumbInput && previewImg) {
+        thumbInput.addEventListener('change', function() {
+            const file = this.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    previewImg.src = e.target.result;
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+    }
+});
 </script>

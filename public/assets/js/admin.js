@@ -1,16 +1,21 @@
 /**
  * DecorNest Admin JavaScript
- * Handles CRUD operations for products, categories, orders, etc.
+ * Comprehensive interactive handlers for Products, Categories, Orders, etc.
  */
 
 // ─── Products ───────────────────────────────────────────────────────────────
 
-function deleteProduct(id) {
-    if (!confirm('Bạn có chắc muốn ẩn sản phẩm này?\n\nSản phẩm sẽ bị ẩn khỏi website nhưng không bị xóa khỏi hệ thống.')) return;
+function deleteProduct(id, button) {
+    if (!confirm('Bạn có chắc muốn xóa sản phẩm này?\n\n- Nếu sản phẩm chưa có đơn hàng: Hệ thống sẽ xóa vĩnh viễn.\n- Nếu sản phẩm đã có đơn hàng: Hệ thống sẽ tự động ẩn sản phẩm để bảo vệ lịch sử đơn hàng.')) {
+        return;
+    }
 
-    const btn = event.target;
-    btn.disabled = true;
-    btn.textContent = '...';
+    const btn = button || document.querySelector(`[data-product-id="${id}"]`);
+    const originalContent = btn ? btn.innerHTML : 'Xóa';
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = `<span class="inline-block animate-spin">⌛</span> Đang xử lý...`;
+    }
 
     fetch(APP_URL + '/admin/products/' + id + '/delete', {
         method: 'POST',
@@ -22,26 +27,82 @@ function deleteProduct(id) {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            // Remove the row from table gracefully
-            const row = btn.closest('tr');
-            if (row) {
-                row.style.opacity = '0.4';
-                row.style.transition = 'opacity 0.3s';
-                setTimeout(() => row.remove(), 300);
+            const row = document.getElementById('product-row-' + id) || (btn ? btn.closest('tr') : null);
+            if (data.action === 'deleted') {
+                if (row) {
+                    row.style.transition = 'all 0.4s ease-out';
+                    row.style.opacity = '0';
+                    row.style.transform = 'translateX(-20px)';
+                    setTimeout(() => row.remove(), 400);
+                } else {
+                    location.reload();
+                }
             } else {
-                window.location.reload();
+                // Soft deleted (hidden)
+                if (row) {
+                    const statusBtn = row.querySelector('.status-btn');
+                    if (statusBtn) {
+                        statusBtn.className = 'status-btn inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold cursor-pointer transition-all border bg-gray-100 text-gray-500 border-gray-200 hover:bg-gray-200';
+                        statusBtn.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-gray-400"></span><span>Ẩn</span>';
+                    }
+                } else {
+                    location.reload();
+                }
             }
-            showToast('Đã ẩn sản phẩm thành công.', 'success');
+            showToast(data.message || 'Thao tác xóa sản phẩm thành công.', 'success');
         } else {
-            showToast(data.message || 'Không thể cập nhật sản phẩm.', 'error');
+            showToast(data.message || 'Không thể xóa sản phẩm.', 'error');
+            if (btn) {
+                btn.disabled = false;
+                btn.innerHTML = originalContent;
+            }
+        }
+    })
+    .catch(err => {
+        showToast('Không thể kết nối đến máy chủ. Vui lòng thử lại.', 'error');
+        if (btn) {
             btn.disabled = false;
-            btn.textContent = 'Xóa';
+            btn.innerHTML = originalContent;
+        }
+    });
+}
+
+function toggleProductStatus(id, button) {
+    const btn = button;
+    if (!btn) return;
+    
+    btn.style.opacity = '0.6';
+    btn.style.pointerEvents = 'none';
+
+    fetch(APP_URL + '/admin/products/' + id + '/toggle-status', {
+        method: 'POST',
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest',
+            'Content-Type': 'application/x-www-form-urlencoded'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        btn.style.opacity = '1';
+        btn.style.pointerEvents = 'auto';
+
+        if (data.success) {
+            if (data.is_active) {
+                btn.className = 'status-btn inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold cursor-pointer transition-all border bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100';
+                btn.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span><span>Hiện</span>';
+            } else {
+                btn.className = 'status-btn inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold cursor-pointer transition-all border bg-gray-100 text-gray-500 border-gray-200 hover:bg-gray-200';
+                btn.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-gray-400"></span><span>Ẩn</span>';
+            }
+            showToast(data.message, 'success');
+        } else {
+            showToast(data.message || 'Không thể cập nhật trạng thái.', 'error');
         }
     })
     .catch(() => {
-        showToast('Không thể kết nối đến máy chủ.', 'error');
-        btn.disabled = false;
-        btn.textContent = 'Xóa';
+        btn.style.opacity = '1';
+        btn.style.pointerEvents = 'auto';
+        showToast('Lỗi kết nối máy chủ.', 'error');
     });
 }
 
@@ -105,7 +166,7 @@ function quickConfirm(id) {
 
 function quickCancel(id) {
     const reason = prompt('Lý do hủy đơn hàng (không bắt buộc):');
-    if (reason === null) return; // User cancelled prompt
+    if (reason === null) return;
     updateOrderStatus(id, 'cancelled');
 }
 
@@ -176,57 +237,32 @@ function confirmPayment(id) {
 // ─── Toast Notification ─────────────────────────────────────────────────────
 
 function showToast(message, type = 'success') {
-    // Remove existing toasts
     document.querySelectorAll('.admin-toast').forEach(el => el.remove());
 
-    const colors = {
-        success: 'bg-green-50 border-green-200 text-green-800',
-        error: 'bg-red-50 border-red-200 text-red-800',
-        info: 'bg-blue-50 border-blue-200 text-blue-800',
+    const styles = {
+        success: 'bg-emerald-600 text-white shadow-emerald-900/20',
+        error:   'bg-red-600 text-white shadow-red-900/20',
+        info:    'bg-charcoal text-white shadow-charcoal/20',
     };
-    const icons = { success: '✓', error: '✕', info: 'ℹ' };
+    const icons = {
+        success: '✓',
+        error:   '✕',
+        info:    'ℹ'
+    };
 
     const toast = document.createElement('div');
-    toast.className = `admin-toast fixed top-4 right-4 z-50 flex items-center gap-3 px-4 py-3 rounded-xl border shadow-lg text-sm font-medium transition-all duration-300 ${colors[type] || colors.info}`;
-    toast.innerHTML = `<span class="text-base">${icons[type] || icons.info}</span> <span>${message}</span>`;
-    toast.style.opacity = '0';
-    toast.style.transform = 'translateX(20px)';
+    toast.className = `admin-toast fixed top-5 right-5 z-50 flex items-center gap-3 px-4 py-3 rounded-2xl shadow-xl text-xs font-semibold tracking-wide transition-all duration-300 transform translate-y-[-10px] opacity-0 ${styles[type] || styles.info}`;
+    toast.innerHTML = `<span class="w-5 h-5 rounded-full bg-white/20 flex items-center justify-center text-xs font-bold">${icons[type] || icons.info}</span> <span>${message}</span>`;
     document.body.appendChild(toast);
 
     requestAnimationFrame(() => {
-        toast.style.opacity = '1';
-        toast.style.transform = 'translateX(0)';
+        toast.classList.remove('translate-y-[-10px]', 'opacity-0');
+        toast.classList.add('translate-y-0', 'opacity-100');
     });
 
     setTimeout(() => {
-        toast.style.opacity = '0';
-        toast.style.transform = 'translateX(20px)';
+        toast.classList.remove('translate-y-0', 'opacity-100');
+        toast.classList.add('translate-y-[-10px]', 'opacity-0');
         setTimeout(() => toast.remove(), 300);
     }, 3500);
 }
-
-// ─── Image preview ──────────────────────────────────────────────────────────
-
-document.addEventListener('DOMContentLoaded', function () {
-    // Preview thumbnail before upload
-    const thumbInput = document.querySelector('input[name="thumbnail"]');
-    if (thumbInput) {
-        thumbInput.addEventListener('change', function () {
-            const file = this.files[0];
-            if (!file) return;
-            const reader = new FileReader();
-            reader.onload = function (e) {
-                let preview = document.getElementById('thumb-preview');
-                if (!preview) {
-                    preview = document.createElement('img');
-                    preview.id = 'thumb-preview';
-                    preview.className = 'w-full rounded-lg object-cover mt-2';
-                    preview.style.maxHeight = '200px';
-                    thumbInput.parentNode.insertBefore(preview, thumbInput.nextSibling);
-                }
-                preview.src = e.target.result;
-            };
-            reader.readAsDataURL(file);
-        });
-    }
-});

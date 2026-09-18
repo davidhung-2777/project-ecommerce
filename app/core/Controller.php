@@ -9,10 +9,10 @@ abstract class Controller
     /**
      * Render a view file with optional layout.
      */
-    protected function view(string $view, array $data = [], string $layout = 'main'): void
+    protected function view(string $view, array $viewData = [], string $layout = 'main'): void
     {
         // Extract data to local variables for views
-        extract($data, EXTR_SKIP);
+        extract($viewData, EXTR_OVERWRITE);
 
         $viewFile = ROOT_PATH . '/app/views/' . $this->viewPath . '/' . $view . '.php';
 

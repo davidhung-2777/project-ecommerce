@@ -56,15 +56,39 @@ class AdminController extends Controller
     }
 
     // ── Products ──────────────────────────────────────────────────────────────
-
+ 
     public function products(): void
     {
         $this->requireAdmin();
-        $page    = max(1, (int) $this->get('page', 1));
-        $search  = $this->get('search', '');
-        $filters = $search ? ['search' => $search] : [];
-        $result  = $this->productModel->getFilteredAdmin($filters, $page, 20);
-        $this->view('pages/products', $result + compact('search'), 'main');
+        $page     = max(1, (int) $this->get('page', 1));
+        $search   = trim((string) $this->get('search', ''));
+        $category = $this->get('category_id', '');
+        $status   = $this->get('status', '');
+
+        $filters = [];
+        if ($search !== '') {
+            $filters['search'] = $search;
+        }
+        if ($category !== '') {
+            $filters['category_id'] = (int) $category;
+        }
+        if ($status !== '') {
+            $filters['status'] = (int) $status;
+        }
+
+        $result     = $this->productModel->getFilteredAdmin($filters, $page, 20);
+        $products   = $result['data'] ?? [];
+        $categories = $this->categoryModel->getAllActive();
+        $stats      = $this->productModel->getAdminStats();
+
+        $this->view('pages/products', array_merge($result, [
+            'products'    => $products,
+            'categories'  => $categories,
+            'stats'       => $stats,
+            'search'      => $search,
+            'category_id' => $category,
+            'status'      => $status,
+        ]), 'main');
     }
 
     public function createProduct(): void
@@ -72,7 +96,7 @@ class AdminController extends Controller
         $this->requireAdmin();
         $categories = $this->categoryModel->getAllActive();
         $tiers = []; // Empty tiers for new product
-        $product = null; // No product for create
+        $product = []; // No product for create
         $this->view('pages/product-form', compact('categories', 'tiers', 'product'));
     }
 
@@ -89,7 +113,6 @@ class AdminController extends Controller
         $thumbnail = $this->handleImageUpload('thumbnail');
         if ($thumbnail) {
             $data['thumbnail'] = $thumbnail;
-            $data['image_url'] = $thumbnail; // Both fields for compatibility
         }
 
         // Handle gallery images
@@ -109,7 +132,7 @@ class AdminController extends Controller
             $this->setFlash('success', 'Sản phẩm đã được tạo thành công.');
             $this->redirect($this->baseUrl('admin/products'));
         } catch (\Exception $e) {
-            $this->setFlash('error', 'Lỗi: ' . $e->getMessage());
+            $this->setFlash('error', 'Lỗi khi tạo sản phẩm: ' . $e->getMessage());
             $this->redirect($this->baseUrl('admin/products/create'));
         }
     }
@@ -139,19 +162,26 @@ class AdminController extends Controller
         }
 
         $productId = (int) $id;
-        $data      = $this->buildProductData($_POST);
+        $product   = $this->productModel->find($productId);
+        if (!$product) {
+            $this->setFlash('error', 'Sản phẩm không tồn tại.');
+            $this->redirect($this->baseUrl('admin/products'));
+            return;
+        }
+
+        $data = $this->buildProductData($_POST);
 
         // Upload new thumbnail if provided
         $newThumb = $this->handleImageUpload('thumbnail');
         if ($newThumb) {
             $data['thumbnail'] = $newThumb;
-            $data['image_url'] = $newThumb;
         }
 
         // Handle new gallery images
         $gallery = $this->handleGalleryUpload('images');
         if (!empty($gallery)) {
-            $data['images'] = json_encode($gallery);
+            $existingImages = json_decode($product['images'] ?? '[]', true) ?: [];
+            $data['images'] = json_encode(array_values(array_unique(array_merge($existingImages, $gallery))));
         }
 
         try {
@@ -165,7 +195,7 @@ class AdminController extends Controller
             $this->setFlash('success', 'Cập nhật sản phẩm thành công.');
             $this->redirect($this->baseUrl('admin/products'));
         } catch (\Exception $e) {
-            $this->setFlash('error', 'Lỗi: ' . $e->getMessage());
+            $this->setFlash('error', 'Lỗi khi cập nhật: ' . $e->getMessage());
             $this->redirect($this->baseUrl('admin/products/' . $productId . '/edit'));
         }
     }
@@ -173,8 +203,71 @@ class AdminController extends Controller
     public function deleteProduct(string $id): void
     {
         $this->requireAdmin();
-        $this->productModel->update((int) $id, ['is_active' => 0]);
-        $this->json(['success' => true, 'message' => 'Sản phẩm đã được xóa.']);
+        $productId = (int) $id;
+        $product   = $this->productModel->find($productId);
+
+        if (!$product) {
+            $this->json(['success' => false, 'message' => 'Sản phẩm không tồn tại.']);
+            return;
+        }
+
+        try {
+            // Check if product has been ordered
+            $hasOrders = (int) (\App\Core\Database::getInstance()->fetch(
+                "SELECT COUNT(*) as cnt FROM order_details WHERE product_id = ?",
+                [$productId]
+            )['cnt'] ?? 0);
+
+            if ($hasOrders > 0) {
+                // Soft delete to protect order history integrity
+                $this->productModel->update($productId, ['is_active' => 0]);
+                $this->json([
+                    'success' => true, 
+                    'message' => 'Sản phẩm đã có trong đơn hàng nên được chuyển sang trạng thái Ẩn để bảo toàn lịch sử.',
+                    'action'  => 'hidden'
+                ]);
+                return;
+            }
+
+            // Remove dependencies before hard delete
+            $db = \App\Core\Database::getInstance();
+            $db->query("DELETE FROM product_price_tiers WHERE product_id = ?", [$productId]);
+            $db->query("DELETE FROM cart_items WHERE product_id = ?", [$productId]);
+            $db->query("DELETE FROM quote_items WHERE product_id = ?", [$productId]);
+            $db->query("DELETE FROM wishlists WHERE product_id = ?", [$productId]);
+            $db->query("DELETE FROM reviews WHERE product_id = ?", [$productId]);
+            $db->query("DELETE FROM product_images WHERE product_id = ?", [$productId]);
+            $db->query("DELETE FROM product_variants WHERE product_id = ?", [$productId]);
+
+            $this->productModel->delete($productId);
+            $this->json([
+                'success' => true, 
+                'message' => 'Đã xóa vĩnh viễn sản phẩm khỏi hệ thống.',
+                'action'  => 'deleted'
+            ]);
+        } catch (\Exception $e) {
+            $this->json(['success' => false, 'message' => 'Lỗi khi xóa sản phẩm: ' . $e->getMessage()]);
+        }
+    }
+
+    public function toggleProductStatus(string $id): void
+    {
+        $this->requireAdmin();
+        $productId = (int) $id;
+        $product   = $this->productModel->find($productId);
+
+        if (!$product) {
+            $this->json(['success' => false, 'message' => 'Sản phẩm không tồn tại.']);
+            return;
+        }
+
+        $newStatus = $product['is_active'] ? 0 : 1;
+        $this->productModel->update($productId, ['is_active' => $newStatus]);
+        $this->json([
+            'success'   => true, 
+            'is_active' => $newStatus,
+            'message'   => $newStatus ? 'Đã kích hoạt hiển thị sản phẩm trên website.' : 'Đã ẩn sản phẩm khỏi website.'
+        ]);
     }
 
     // ── Categories ────────────────────────────────────────────────────────────
@@ -443,6 +536,26 @@ class AdminController extends Controller
 
     private function productSlug(string $name): string
     {
+        $unicode = [
+            'a' => 'á|à|ả|ã|ạ|ă|ắ|ặ|ằ|ẳ|ẵ|â|ấ|ầ|ẩ|ẫ|ậ',
+            'd' => 'đ',
+            'e' => 'é|è|ẻ|ẽ|ẹ|ê|ế|ề|ể|ễ|ệ',
+            'i' => 'í|ì|ỉ|ĩ|ị',
+            'o' => 'ó|ò|ỏ|õ|ọ|ô|ố|ồ|ổ|ỗ|ộ|ơ|ớ|ờ|ở|ỡ|ợ',
+            'u' => 'ú|ù|ủ|ũ|ụ|ư|ứ|ừ|ử|ữ|ự',
+            'y' => 'ý|ỳ|ỷ|ỹ|ỵ',
+            'A' => 'Á|À|Ả|Ã|Ạ|Ă|Ắ|Ặ|Ằ|Ẳ|Ẵ|Â|Ấ|Ầ|Ẩ|Ẫ|Ậ',
+            'D' => 'Đ',
+            'E' => 'É|È|Ẻ|Ẽ|Ẹ|Ê|Ế|Ề|Ể|Ễ|Ệ',
+            'I' => 'Í|Ì|Ỉ|Ĩ|Ị',
+            'O' => 'Ó|Ò|Ỏ|Õ|Ọ|Ô|Ố|Ồ|Ổ|Ỗ|Ộ|Ơ|Ớ|Ờ|Ở|Ỡ|Ợ',
+            'U' => 'Ú|Ù|Ủ|Ũ|Ụ|Ư|Ứ|Ừ|Ử|Ữ|Ự',
+            'Y' => 'Ý|Ỳ|Ỷ|Ỹ|Ỵ',
+        ];
+        foreach ($unicode as $nonAccent => $accent) {
+            $name = preg_replace("/($accent)/iu", $nonAccent, $name);
+        }
+
         $slug = trim((string) preg_replace('/[^a-z0-9]+/i', '-', strtolower($name)), '-');
         if ($slug === '') {
             $slug = 'product-' . uniqid();
@@ -457,13 +570,18 @@ class AdminController extends Controller
 
         $file    = $_FILES[$fieldName];
         $ext     = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
-        $allowed = ['jpg', 'jpeg', 'png', 'webp'];
+        $allowed = ['jpg', 'jpeg', 'png', 'webp', 'gif'];
 
         if (!in_array($ext, $allowed)) return '';
         if ($file['size'] > 5 * 1024 * 1024) return ''; // 5MB max
 
+        $uploadDir = ROOT_PATH . '/public/uploads/products';
+        if (!is_dir($uploadDir)) {
+            @mkdir($uploadDir, 0777, true);
+        }
+
         $filename = 'product_' . uniqid() . '.' . $ext;
-        $dest     = ROOT_PATH . '/public/uploads/products/' . $filename;
+        $dest     = $uploadDir . '/' . $filename;
 
         if (move_uploaded_file($file['tmp_name'], $dest)) {
             return '/uploads/products/' . $filename;
@@ -474,18 +592,23 @@ class AdminController extends Controller
     private function handleGalleryUpload(string $fieldName): array
     {
         $paths = [];
-        if (empty($_FILES[$fieldName]['name'][0])) return $paths;
+        if (empty($_FILES[$fieldName]['name']) || !is_array($_FILES[$fieldName]['name'])) return $paths;
+
+        $uploadDir = ROOT_PATH . '/public/uploads/products';
+        if (!is_dir($uploadDir)) {
+            @mkdir($uploadDir, 0777, true);
+        }
 
         foreach ($_FILES[$fieldName]['tmp_name'] as $i => $tmpName) {
-            if (!$tmpName) continue;
-            $fake = ['name' => $_FILES[$fieldName]['name'][$i], 'tmp_name' => $tmpName, 'size' => $_FILES[$fieldName]['size'][$i]];
-            $path = $this->handleImageUpload($fieldName . '_single');
-            // Re-implement for array
+            if (!$tmpName || empty($_FILES[$fieldName]['name'][$i])) continue;
+            
             $ext     = strtolower(pathinfo($_FILES[$fieldName]['name'][$i], PATHINFO_EXTENSION));
-            $allowed = ['jpg', 'jpeg', 'png', 'webp'];
+            $allowed = ['jpg', 'jpeg', 'png', 'webp', 'gif'];
             if (!in_array($ext, $allowed)) continue;
-            $filename = 'gallery_' . uniqid() . '.' . $ext;
-            $dest     = ROOT_PATH . '/public/uploads/products/' . $filename;
+            if ($_FILES[$fieldName]['size'][$i] > 5 * 1024 * 1024) continue;
+
+            $filename = 'gallery_' . uniqid() . '_' . $i . '.' . $ext;
+            $dest     = $uploadDir . '/' . $filename;
             if (move_uploaded_file($tmpName, $dest)) {
                 $paths[] = '/uploads/products/' . $filename;
             }

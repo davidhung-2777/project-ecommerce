@@ -24,12 +24,13 @@
         [x-cloak] { display: none !important; }
     </style>
 </head>
-<body class="bg-gray-50 text-charcoal antialiased" x-data="{ sidebarOpen: true }">
+<body class="bg-gray-50 text-charcoal antialiased" x-data="{ sidebarOpen: window.innerWidth >= 1024 }">
 
 <div class="flex h-screen overflow-hidden">
 
     <!-- Sidebar -->
-    <aside :class="sidebarOpen ? 'w-60' : 'w-0 overflow-hidden'" class="bg-charcoal text-white flex-shrink-0 transition-all duration-300 flex flex-col">
+    <div x-cloak x-show="sidebarOpen && window.innerWidth < 1024" @click="sidebarOpen = false" class="fixed inset-0 z-30 bg-charcoal/50 lg:hidden"></div>
+    <aside :class="sidebarOpen ? 'w-60 translate-x-0' : 'w-0 -translate-x-full lg:translate-x-0 overflow-hidden'" class="fixed inset-y-0 left-0 z-40 bg-charcoal text-white flex-shrink-0 transition-all duration-300 flex flex-col lg:relative lg:z-auto">
         <!-- Logo -->
         <div class="px-5 py-5 border-b border-white/10">
             <a href="<?= $_ENV['APP_URL'] ?? '' ?>/admin" class="text-lg font-bold">
@@ -75,18 +76,19 @@
     <div class="flex-1 flex flex-col overflow-hidden">
         <!-- Top Bar -->
         <header class="bg-white border-b border-gray-200 px-6 py-3 flex items-center justify-between flex-shrink-0">
-            <button @click="sidebarOpen = !sidebarOpen" class="p-1 text-gray-500 hover:text-charcoal">
+            <button @click="sidebarOpen = !sidebarOpen" aria-label="Mở hoặc đóng menu" class="p-2 -ml-2 rounded-lg text-gray-500 hover:bg-gray-100 hover:text-charcoal transition-colors">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
                 </svg>
             </button>
             <div class="flex items-center gap-3 text-sm">
-                <span class="text-muted">👋 Xin chào, <strong><?= htmlspecialchars($_SESSION['user_name'] ?? 'Admin') ?></strong></span>
+                <span class="hidden sm:inline text-muted">Xin chào, <strong><?= htmlspecialchars($_SESSION['user_name'] ?? 'Admin') ?></strong></span>
+                <span class="inline-flex h-8 w-8 items-center justify-center rounded-full bg-cream text-xs font-semibold text-wooddk"><?= strtoupper(substr($_SESSION['user_name'] ?? 'A', 0, 1)) ?></span>
             </div>
         </header>
 
         <!-- Content -->
-        <main class="flex-1 overflow-y-auto p-6">
+        <main class="flex-1 min-w-0 overflow-y-auto p-4 sm:p-6">
             <?php if (!empty($_SESSION['flash'])): ?>
             <?php $f = $_SESSION['flash']; unset($_SESSION['flash']); ?>
             <div class="mb-4 p-3 rounded-lg text-sm <?= $f['type'] === 'success' ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-red-50 text-red-700 border border-red-200' ?>">
