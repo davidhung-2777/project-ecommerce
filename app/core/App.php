@@ -48,8 +48,11 @@ class App
         $r->post('/payment/vnpay-ipn',        'PaymentController',  'vnpayIpn');
         $r->get('/payment/bank-info/:orderNum','PaymentController', 'bankInfo');
         
-        // Webhook (Public endpoint - NO AUTH)
-        $r->post('/api/webhook/payment',      'WebhookController',  'handlePayment');
+        // Webhooks (Public endpoints - NO AUTH REQUIRED)
+        $r->post('/webhook/sepay',            'WebhookController',  'sepay');
+        $r->get('/webhook/sepay/test',        'WebhookController',  'test');
+        $r->post('/webhook/momo',             'PaymentController',  'momoIpn');
+        $r->post('/webhook/vnpay',            'PaymentController',  'vnpayIpn');
 
         // Quote (B2B)
         $r->get('/quote',                     'QuoteController',    'index');

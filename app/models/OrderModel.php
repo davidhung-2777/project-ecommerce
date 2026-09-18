@@ -13,6 +13,29 @@ class OrderModel extends Model
         return $this->findOneWhere('order_number = ?', [$orderNumber]);
     }
 
+    /**
+     * Find order by order code (alias for findByOrderNumber)
+     * 
+     * @param string $orderCode
+     * @return array|false
+     */
+    public function findByOrderCode(string $orderCode): array|false
+    {
+        return $this->findByOrderNumber($orderCode);
+    }
+
+    /**
+     * Update order status
+     * 
+     * @param int $orderId
+     * @param string $status
+     * @return bool
+     */
+    public function updateStatus(int $orderId, string $status): bool
+    {
+        return $this->update($orderId, ['status' => $status]);
+    }
+
     public function generateOrderNumber(): string
     {
         return 'DN' . date('Ymd') . strtoupper(substr(uniqid(), -6));
