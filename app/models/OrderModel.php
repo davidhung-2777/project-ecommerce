@@ -36,6 +36,28 @@ class OrderModel extends Model
         return $this->update($orderId, ['status' => $status]);
     }
 
+    public function updatePaymentStatus(int $orderId, string $paymentStatus, ?string $paidAt = null): bool
+    {
+        $data = ['payment_status' => $paymentStatus];
+        if ($paidAt !== null && $this->hasColumn('paid_at')) {
+            $data['paid_at'] = $paidAt;
+        }
+
+        return $this->update($orderId, $data);
+    }
+
+    private function hasColumn(string $column): bool
+    {
+        $result = $this->db->fetch(
+            'SELECT COUNT(*) AS column_count
+             FROM information_schema.columns
+             WHERE table_schema = DATABASE() AND table_name = ? AND column_name = ?',
+            [$this->table, $column]
+        );
+
+        return (int) ($result['column_count'] ?? 0) > 0;
+    }
+
     public function generateOrderNumber(): string
     {
         return 'DN' . date('Ymd') . strtoupper(substr(uniqid(), -6));

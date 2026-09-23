@@ -1,5 +1,7 @@
 <?php
 
+namespace App\Services\Payment;
+
 /**
  * SePay API Integration Service
  * 
@@ -159,18 +161,22 @@ class SepayService
      * @param string $signature Signature từ header
      * @return bool
      */
-    public function verifyWebhookSignature(array $payload, string $signature): bool
+    public function verifyWebhookSignature(string $rawBody, string $signature, string $timestamp): bool
     {
         if (empty($this->webhookSecret)) {
             error_log('SePay Webhook Secret chưa được cấu hình');
             return false;
         }
 
-        // SePay signature format: sha256(webhook_secret + json_payload)
-        $jsonPayload = json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
-        $expectedSignature = hash_hmac('sha256', $jsonPayload, $this->webhookSecret);
+        if ($timestamp === '' || abs(time() - (int) $timestamp) > 300) {
+            return false;
+        }
 
-        return hash_equals($expectedSignature, $signature);
+        $receivedSignature = preg_replace('/^sha256=/i', '', trim($signature));
+        $signedPayload = $timestamp . '.' . $rawBody;
+        $expectedSignature = hash_hmac('sha256', $signedPayload, $this->webhookSecret);
+
+        return $receivedSignature !== '' && hash_equals($expectedSignature, $receivedSignature);
     }
 
     /**
@@ -210,13 +216,18 @@ class SepayService
     public function parseWebhookPayload(array $payload): array
     {
         return [
-            'transaction_id' => $payload['id'] ?? '',
-            'reference_number' => $payload['reference_number'] ?? '',
-            'amount' => (float)($payload['amount_in'] ?? $payload['amount'] ?? 0),
-            'description' => $payload['transaction_content'] ?? '',
-            'transaction_date' => $payload['transaction_date'] ?? '',
-            'account_number' => $payload['account_number'] ?? '',
-            'bank_code' => $payload['bank_brand_name'] ?? '',
+            'transaction_id' => (string) ($payload['id'] ?? $payload['transactionId'] ?? ''),
+            'reference_number' => $payload['reference_number'] ?? $payload['referenceCode'] ?? '',
+            'amount' => (float) ($payload['amount_in'] ?? $payload['amountIn'] ?? $payload['transferAmount'] ?? $payload['amount'] ?? 0),
+            'description' => implode(' ', array_filter([
+                $payload['transaction_content'] ?? $payload['transactionContent'] ?? '',
+                $payload['content'] ?? '',
+                $payload['description'] ?? '',
+                $payload['code'] ?? '',
+            ], static fn ($value) => is_scalar($value) && (string) $value !== '')),
+            'transaction_date' => $payload['transaction_date'] ?? $payload['transactionDate'] ?? '',
+            'account_number' => $payload['account_number'] ?? $payload['accountNumber'] ?? '',
+            'bank_code' => $payload['bank_brand_name'] ?? $payload['bankBrandName'] ?? $payload['gateway'] ?? '',
             'gateway' => $payload['gateway'] ?? '',
             'accumulated' => (float)($payload['accumulated'] ?? 0),
             'raw_data' => $payload

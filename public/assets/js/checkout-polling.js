@@ -5,41 +5,42 @@
  */
 
 class CheckoutPolling {
-    constructor(orderCode) {
+    constructor(orderCode, baseUrl = '/project-ecommerce/public') {
         this.orderCode = orderCode;
+        this.baseUrl = baseUrl.replace(/\/$/, '');
         this.pollInterval = null;
         this.pollDelay = 2500; // 2.5 giây
         this.maxRetries = 240; // 10 phút (240 * 2.5s)
         this.retryCount = 0;
         this.isPolling = false;
-        
+
         this.init();
     }
-    
+
     init() {
         console.log(`[Polling] Initialized for order: ${this.orderCode}`);
         this.startPolling();
         this.setupCountdown();
     }
-    
+
     /**
      * Bắt đầu polling
      */
     startPolling() {
         if (this.isPolling) return;
-        
+
         this.isPolling = true;
         console.log('[Polling] Started');
-        
+
         // Poll ngay lập tức lần đầu
         this.checkOrderStatus();
-        
+
         // Sau đó poll mỗi 2.5 giây
         this.pollInterval = setInterval(() => {
             this.checkOrderStatus();
         }, this.pollDelay);
     }
-    
+
     /**
      * Dừng polling
      */
@@ -51,13 +52,13 @@ class CheckoutPolling {
             console.log('[Polling] Stopped');
         }
     }
-    
+
     /**
      * Kiểm tra trạng thái order
      */
     async checkOrderStatus() {
         this.retryCount++;
-        
+
         // Dừng nếu quá số lần retry
         if (this.retryCount > this.maxRetries) {
             console.log('[Polling] Max retries reached');
@@ -65,111 +66,118 @@ class CheckoutPolling {
             this.showError('Hết thời gian chờ. Vui lòng kiểm tra lại đơn hàng của bạn.');
             return;
         }
-        
+
         try {
-            const response = await fetch(`/project-ecommerce/public/api/order-status.php?order_code=${this.orderCode}`);
-            
+            const response = await fetch(`${this.baseUrl}/api/order-status.php?order_code=${encodeURIComponent(this.orderCode)}`, {
+                cache: 'no-store'
+            });
+
             if (!response.ok) {
                 throw new Error(`HTTP ${response.status}`);
             }
-            
+
             const data = await response.json();
             console.log('[Polling] Status:', data.status);
-            
+
             this.handleStatusChange(data);
-            
+
         } catch (error) {
             console.error('[Polling] Error:', error);
             // Tiếp tục poll dù có lỗi (có thể lỗi mạng tạm thời)
         }
     }
-    
+
     /**
      * Xử lý thay đổi trạng thái
      */
     handleStatusChange(data) {
         const { status, time_remaining_seconds } = data;
-        
+
         switch (status) {
             case 'paid':
                 this.onPaymentSuccess(data);
                 break;
-                
+
             case 'expired':
                 this.onPaymentExpired(data);
                 break;
-                
+
             case 'needs_review':
                 this.onPaymentNeedsReview(data);
                 break;
-                
+
             case 'pending':
                 this.onPaymentPending(data);
                 break;
         }
     }
-    
+
     /**
      * Thanh toán thành công
      */
     onPaymentSuccess(data) {
         console.log('[Polling] Payment SUCCESS!');
         this.stopPolling();
-        
+
+        const title = document.getElementById('payment-status-title');
+        if (title) title.textContent = 'Đặt hàng thành công!';
+        const message = document.getElementById('payment-status-message');
+        if (message) message.textContent = 'Cảm ơn bạn đã thanh toán. Đơn hàng sẽ được xử lý sớm.';
+
         // Ẩn QR code
         const qrSection = document.getElementById('qr-section');
         if (qrSection) qrSection.style.display = 'none';
-        
+
         // Hiện thông báo thành công
         const successSection = document.getElementById('success-section');
         if (successSection) {
             successSection.style.display = 'block';
             successSection.classList.add('animate-fade-in');
         }
-        
+
         // Update UI
         document.body.classList.add('payment-success');
-        
+
         // Phát âm thanh thông báo (nếu có)
         this.playSuccessSound();
-        
-        // Redirect sau 3 giây (optional)
+
+        // Chuyển tới danh sách đơn để khách theo dõi trạng thái giao hàng.
         setTimeout(() => {
-            // window.location.href = `/project-ecommerce/public/user/orders/${data.order_code}`;
-        }, 3000);
+            window.location.href = `${this.baseUrl}/user/orders`;
+        }, 2500);
     }
-    
+
     /**
      * Đơn hàng hết hạn
      */
     onPaymentExpired(data) {
         console.log('[Polling] Payment EXPIRED');
         this.stopPolling();
-        
+
         // Ẩn QR
         const qrSection = document.getElementById('qr-section');
         if (qrSection) qrSection.style.display = 'none';
-        
+
         // Hiện thông báo hết hạn
         const expiredSection = document.getElementById('expired-section');
         if (expiredSection) {
             expiredSection.style.display = 'block';
         }
-        
+
         // Hiện nút "Tạo lại QR"
         const retryButton = document.getElementById('retry-payment-btn');
         if (retryButton) {
             retryButton.style.display = 'inline-block';
         }
     }
-    
+
     /**
      * Cần review (số tiền không khớp)
      */
     onPaymentNeedsReview(data) {
         console.log('[Polling] Payment NEEDS REVIEW');
         this.stopPolling();
-        
+
         const reviewSection = document.getElementById('review-section');
         if (reviewSection) {
             reviewSection.style.display = 'block';
@@ -182,7 +190,7 @@ class CheckoutPolling {
             `;
         }
     }
-    
+
     /**
      * Đang chờ thanh toán
      */
@@ -192,37 +200,37 @@ class CheckoutPolling {
             this.updateCountdown(data.time_remaining_seconds);
         }
     }
-    
+
     /**
      * Setup countdown timer
      */
     setupCountdown() {
         this.countdownElement = document.getElementById('countdown-timer');
     }
-    
+
     /**
      * Update countdown display
      */
     updateCountdown(seconds) {
         if (!this.countdownElement) return;
-        
+
         const minutes = Math.floor(seconds / 60);
         const secs = seconds % 60;
-        
-        this.countdownElement.textContent = 
+
+        this.countdownElement.textContent =
             `${String(minutes).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
-        
+
         // Thêm class warning khi còn < 3 phút
         if (seconds < 180) {
             this.countdownElement.classList.add('text-warning');
         }
-        
+
         // Thêm class danger khi còn < 1 phút
         if (seconds < 60) {
             this.countdownElement.classList.add('text-danger');
         }
     }
-    
+
     /**
      * Hiện lỗi
      */
@@ -233,7 +241,7 @@ class CheckoutPolling {
             errorDiv.style.display = 'block';
         }
     }
-    
+
     /**
      * Phát âm thanh thông báo thành công
      */

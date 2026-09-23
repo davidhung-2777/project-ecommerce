@@ -3,7 +3,7 @@ $baseUrl   = $_ENV['APP_URL'] ?? 'http://localhost/project-ecommerce/public';
 $pageTitle = 'Thanh Toán Đơn Hàng - DecorNest';
 $items     = $cartData['items'] ?? [];
 $subtotal  = $cartData['subtotal'] ?? 0;
-$shippingFee = $subtotal >= 5000000 ? 0 : 50000;
+$shippingFee = (float) ($cartData['installation_fee'] ?? 0);
 $errors    = $_SESSION['checkout_errors'] ?? [];
 $oldInput  = $_SESSION['checkout_input'] ?? [];
 unset($_SESSION['checkout_errors'], $_SESSION['checkout_input']);
@@ -240,7 +240,7 @@ unset($_SESSION['checkout_errors'], $_SESSION['checkout_input']);
                             <span class="font-semibold text-charcoal"><?= number_format($subtotal) ?>đ</span>
                         </div>
                         <div class="flex justify-between text-muted">
-                            <span>Phí giao hàng & lắp đặt</span>
+                            <span>Phí lắp đặt</span>
                             <span class="text-sage font-medium"><?= $shippingFee === 0 ? 'Miễn phí' : number_format($shippingFee) . 'đ' ?></span>
                         </div>
                         <div x-show="invoiceType === 'vat'" class="flex justify-between text-muted">

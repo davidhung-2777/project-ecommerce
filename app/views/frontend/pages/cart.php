@@ -128,24 +128,14 @@ $subtotal  = $cartData['subtotal'] ?? 0;
                         <span id="cart-subtotal" class="font-semibold text-charcoal"><?= number_format($subtotal) ?>đ</span>
                     </div>
                     <div class="flex justify-between text-muted">
-                        <span>Vận chuyển & Lắp đặt</span>
-                        <span class="text-sage font-medium"><?= $subtotal >= 5000000 ? 'Miễn phí' : 'Tính khi thanh toán' ?></span>
+                        <span>Phí lắp đặt</span>
+                        <span class="text-sage font-medium"><?= ($cartData['installation_fee'] ?? 0) > 0 ? number_format($cartData['installation_fee']) . 'đ' : 'Miễn phí' ?></span>
                     </div>
                 </div>
 
-                <!-- Free Shipping Progress -->
-                <?php $freeShippingThreshold = 5000000; ?>
                 <div class="p-3.5 rounded-2xl bg-white border border-beige space-y-2">
                     <div class="flex justify-between text-[11px] font-semibold">
-                        <?php if ($subtotal >= $freeShippingThreshold): ?>
-                        <span class="text-sage flex items-center gap-1">🌿 Bạn được <strong>Miễn phí vận chuyển</strong>!</span>
-                        <?php else: ?>
-                        <span class="text-charcoal">Mua thêm <strong><?= number_format($freeShippingThreshold - $subtotal) ?>đ</strong> để Freeship</span>
-                        <?php endif; ?>
-                    </div>
-                    <div class="w-full h-1.5 bg-cream rounded-full overflow-hidden">
-                        <div class="h-full bg-sage transition-all duration-500 rounded-full" 
-                             style="width: <?= min(100, round(($subtotal / $freeShippingThreshold) * 100)) ?>%"></div>
+                        <span class="text-sage flex items-center gap-1">🌿 Phí lắp đặt được lấy theo cấu hình sản phẩm.</span>
                     </div>
                 </div>
 

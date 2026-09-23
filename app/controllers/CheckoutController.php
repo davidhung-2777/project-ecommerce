@@ -92,7 +92,7 @@ class CheckoutController extends Controller
 
         // Calculate totals
         $subtotal     = $cartData['subtotal'];
-        $shippingFee  = $this->calculateShipping($subtotal);
+        $shippingFee  = (float) ($cartData['installation_fee'] ?? 0);
         $taxAmount    = $invoiceType === 'vat' ? round($subtotal * 0.10, 2) : 0;
         $totalAmount  = $subtotal + $shippingFee + $taxAmount;
 
@@ -197,12 +197,6 @@ class CheckoutController extends Controller
             return $this->cartModel->getOrCreateForGuest($_SESSION['cart_session_id']);
         }
         return null;
-    }
-
-    private function calculateShipping(float $subtotal): float
-    {
-        if ($subtotal >= 5000000) return 0; // Free shipping >= 5M VND
-        return 50000;
     }
 
     private function validateCheckout(array $data): array
