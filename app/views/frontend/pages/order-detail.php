@@ -34,7 +34,7 @@ $pageTitle = 'Chi Tiết Đơn Hàng #' . htmlspecialchars($order['order_number'
             </div>
             <p class="text-xs text-muted mt-1">Ngày đặt: <?= date('d/m/Y H:i', strtotime($order['created_at'])) ?></p>
         </div>
-        <a href="<?= $baseUrl ?>/user/orders" class="text-xs font-semibold text-wood hover:underline">
+        <a href="<?= $baseUrl ?>/account/orders" class="text-xs font-semibold text-wood hover:underline">
             ← Quay lại danh sách
         </a>
     </div>

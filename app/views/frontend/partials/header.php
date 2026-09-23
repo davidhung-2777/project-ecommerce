@@ -77,9 +77,6 @@ $baseUrl = $_ENV['APP_URL'] ?? 'http://localhost/project-ecommerce/public';
                             <p class="text-xs text-muted">Đăng nhập với tư cách</p>
                             <p class="text-xs font-semibold text-charcoal truncate"><?= htmlspecialchars($_SESSION['user_email'] ?? '') ?></p>
                         </div>
-                        <a href="<?= $baseUrl ?>/dashboard" class="flex items-center gap-2 px-4 py-2.5 text-xs text-charcoal hover:bg-cream hover:text-wood transition">
-                            <span>📊</span> Bảng điều khiển
-                        </a>
                         <a href="<?= $baseUrl ?>/user/orders" class="flex items-center gap-2 px-4 py-2.5 text-xs text-charcoal hover:bg-cream hover:text-wood transition">
                             <span>📦</span> Đơn hàng của tôi
                         </a>

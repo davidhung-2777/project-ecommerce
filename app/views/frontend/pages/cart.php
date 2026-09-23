@@ -133,6 +133,15 @@ $subtotal  = $cartData['subtotal'] ?? 0;
                     </div>
                 </div>
 
+                <div class="space-y-2 pt-2">
+                    <label for="voucher-code" class="text-xs font-semibold text-charcoal">Mã giảm giá</label>
+                    <div class="flex gap-2"><input id="voucher-code" type="text" placeholder="Nhập mã voucher" class="min-w-0 flex-1 border border-beige rounded-xl px-3 py-2 text-xs uppercase"><button type="button" onclick="applyVoucher()" class="bg-charcoal text-white rounded-xl px-3 py-2 text-xs font-semibold">Áp dụng</button></div>
+                    <p id="voucher-message" class="text-xs hidden"></p>
+                    <div id="voucher-discount-row" class="hidden justify-between text-sage"><span>Giảm giá</span><span id="voucher-discount"></span></div>
+                </div>
+
+                <!-- Free Shipping Progress -->
+                <?php $freeShippingThreshold = 5000000; ?>
                 <div class="p-3.5 rounded-2xl bg-white border border-beige space-y-2">
                     <div class="flex justify-between text-[11px] font-semibold">
                         <span class="text-sage flex items-center gap-1">🌿 Phí lắp đặt được lấy theo cấu hình sản phẩm.</span>
@@ -167,3 +176,20 @@ $subtotal  = $cartData['subtotal'] ?? 0;
     </div>
     <?php endif; ?>
 </div>
+
+<script>
+async function applyVoucher() {
+    const message = document.getElementById('voucher-message');
+    const code = document.getElementById('voucher-code').value.trim();
+    const cartItems = <?= json_encode(array_map(static fn(array $item): array => ['product_id' => (int) $item['product_id'], 'quantity' => (int) $item['quantity']], $items), JSON_UNESCAPED_UNICODE) ?>;
+    message.className = 'text-xs text-muted'; message.textContent = 'Đang kiểm tra...';
+    const response = await fetch(APP_URL + '/cart/apply-voucher', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({code, cart_items: cartItems}) });
+    const data = await response.json();
+    if (!data.success) { message.className = 'text-xs text-red-600'; message.textContent = data.message || 'Không thể áp dụng voucher.'; return; }
+    message.className = 'text-xs text-sage'; message.textContent = 'Đã áp dụng mã ' + data.code;
+    document.getElementById('voucher-discount-row').classList.remove('hidden');
+    document.getElementById('voucher-discount-row').classList.add('flex');
+    document.getElementById('voucher-discount').textContent = '-' + Number(data.discount).toLocaleString('vi-VN') + 'đ';
+    document.getElementById('cart-total').textContent = Number(data.final_total).toLocaleString('vi-VN') + 'đ';
+}
+</script>

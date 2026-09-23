@@ -65,7 +65,66 @@ class OrderModel extends Model
 
     public function getByUser(int $userId, int $page = 1, int $perPage = 10): array
     {
-        return $this->paginate($page, $perPage, 'user_id = ?', [$userId], 'created_at DESC');
+        $offset = ($page - 1) * $perPage;
+        $total = (int) ($this->db->fetch(
+            'SELECT COUNT(*) AS total FROM orders WHERE user_id = ?',
+            [$userId]
+        )['total'] ?? 0);
+
+        return [
+            'data'         => $this->db->fetchAll(
+                'SELECT o.*, COALESCE(SUM(od.quantity), 0) AS item_count
+                 FROM orders o
+                 LEFT JOIN order_details od ON od.order_id = o.id
+                 WHERE o.user_id = ?
+                 GROUP BY o.id
+                 ORDER BY o.created_at DESC
+                 LIMIT ' . (int) $perPage . ' OFFSET ' . (int) $offset,
+                [$userId]
+            ),
+            'total'        => $total,
+            'per_page'     => $perPage,
+            'current_page' => $page,
+            'last_page'    => max(1, (int) ceil($total / $perPage)),
+        ];
+    }
+
+    /**
+     * Return purchase metrics for the customer detail and dashboard views.
+     */
+    public function getPurchaseStats(int $userId): array
+    {
+        $stats = $this->db->fetch(
+            "SELECT
+                COUNT(*) AS total_orders,
+                COALESCE(SUM(CASE WHEN status <> 'cancelled' THEN order_quantity ELSE 0 END), 0) AS total_products,
+                COALESCE(SUM(CASE WHEN status IN ('confirmed', 'processing', 'shipped', 'delivered') THEN total_amount ELSE 0 END), 0) AS total_spent
+             FROM (
+                SELECT o.id, o.status, o.total_amount,
+                       COALESCE(SUM(od.quantity), 0) AS order_quantity
+                FROM orders o
+                LEFT JOIN order_details od ON od.order_id = o.id
+                WHERE o.user_id = ?
+                GROUP BY o.id
+             ) customer_orders",
+            [$userId]
+        ) ?: [];
+
+        return [
+            'total_orders'   => (int) ($stats['total_orders'] ?? 0),
+            'total_products' => (int) ($stats['total_products'] ?? 0),
+            'total_spent'    => (float) ($stats['total_spent'] ?? 0),
+        ];
+    }
+
+    public function getTotalSpent(int $userId): float
+    {
+        return (float) ($this->db->fetch(
+            "SELECT COALESCE(SUM(total_amount), 0) AS total
+             FROM orders
+             WHERE user_id = ? AND status IN ('confirmed', 'processing', 'shipped', 'delivered')",
+            [$userId]
+        )['total'] ?? 0);
     }
 
     /**

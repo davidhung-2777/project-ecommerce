@@ -82,9 +82,6 @@ $pageTitle = 'Hồ Sơ Của Tôi - DecorNest';
         <!-- Navigation Sidebar (Right) -->
         <div class="md:col-span-4 space-y-4">
             <div class="bg-white rounded-3xl border border-beige p-6 shadow-warm space-y-2">
-                <a href="<?= $baseUrl ?>/dashboard" class="flex items-center gap-3 p-3 rounded-2xl hover:bg-cream transition text-xs font-semibold text-charcoal">
-                    <span>📊</span> Bảng điều khiển
-                </a>
                 <a href="<?= $baseUrl ?>/user/orders" class="flex items-center gap-3 p-3 rounded-2xl hover:bg-cream transition text-xs font-semibold text-charcoal">
                     <span>📦</span> Đơn hàng của tôi
                 </a>

@@ -208,7 +208,7 @@ class UserController extends Controller
         $this->requireAuth();
         $page   = max(1, (int) $this->get('page', 1));
         $result = $this->orderModel->getByUser((int) $_SESSION['user_id'], $page, 10);
-        $this->view('pages/my-orders', $result);
+        $this->view('pages/account-orders', $result);
     }
 
     public function orderDetail(string $id): void
@@ -216,7 +216,9 @@ class UserController extends Controller
         $this->requireAuth();
         $order = $this->orderModel->getFullOrder((int) $id);
         if (!$order || $order['user_id'] != $_SESSION['user_id']) {
-            $this->redirect($this->baseUrl('user/orders'));
+            http_response_code(403);
+            $this->view('pages/forbidden');
+            return;
         }
         $this->view('pages/order-detail', compact('order'));
     }

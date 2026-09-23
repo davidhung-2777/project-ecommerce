@@ -11,6 +11,7 @@ use App\Models\PaymentModel;
 use App\Models\QuoteModel;
 use App\Models\QuoteItemModel;
 use App\Models\UserModel;
+use App\Models\VoucherModel;
 
 class AdminController extends Controller
 {
@@ -24,6 +25,7 @@ class AdminController extends Controller
     private QuoteModel $quoteModel;
     private QuoteItemModel $quoteItemModel;
     private UserModel $userModel;
+    private VoucherModel $voucherModel;
 
     public function __construct()
     {
@@ -35,6 +37,7 @@ class AdminController extends Controller
         $this->quoteModel     = new QuoteModel();
         $this->quoteItemModel = new QuoteItemModel();
         $this->userModel      = new UserModel();
+        $this->voucherModel   = new VoucherModel();
     }
 
     public function dashboard(): void
@@ -451,9 +454,19 @@ class AdminController extends Controller
     public function userDetail(string $id): void
     {
         $this->requireAdmin();
-        $user   = $this->userModel->find((int) $id);
-        $orders = $this->orderModel->getByUser((int) $id, 1, 10);
-        $this->view('pages/user-detail', compact('user', 'orders'));
+        $userId = (int) $id;
+        $user = $this->userModel->find($userId);
+
+        if (!$user) {
+            http_response_code(404);
+            $this->view('pages/404');
+            return;
+        }
+
+        $stats = $this->orderModel->getPurchaseStats($userId);
+        $page = max(1, (int) $this->get('page', 1));
+        $orders = $this->orderModel->getByUser($userId, $page, 10);
+        $this->view('pages/user-detail', compact('user', 'stats', 'orders'));
     }
 
     public function blockUser(string $id): void
@@ -468,6 +481,99 @@ class AdminController extends Controller
         $this->requireAdmin();
         $this->userModel->update((int) $id, ['is_active' => 1]);
         $this->json(['success' => true, 'message' => 'Đã mở khóa tài khoản.']);
+    }
+
+    public function vouchers(): void
+    {
+        $this->requireAdmin();
+        $page = max(1, (int) $this->get('page', 1));
+        $search = trim((string) $this->get('search', ''));
+        $status = (string) $this->get('status', '');
+        $result = $this->voucherModel->getAll($search, $status, $page, 20);
+        $this->view('pages/vouchers/index', $result + compact('search', 'status'));
+    }
+
+    public function createVoucher(): void
+    {
+        $this->requireAdmin();
+        $products = $this->productModel->findAll('name ASC');
+        $categories = $this->categoryModel->getAllActive();
+        $this->view('pages/vouchers/form', compact('products', 'categories'));
+    }
+
+    public function storeVoucher(): void
+    {
+        $this->requireAdmin();
+        $data = $this->voucherInput($_POST);
+        $error = $this->validateVoucherInput($data);
+        if ($error) { $this->setFlash('error', $error); $this->redirect($this->baseUrl('admin/vouchers/create')); }
+        if ($this->voucherModel->findByCode($data['code'])) { $this->setFlash('error', 'Mã voucher đã tồn tại.'); $this->redirect($this->baseUrl('admin/vouchers/create')); }
+        $data['created_by'] = (int) $_SESSION['user_id'];
+        $voucherId = (int) $this->voucherModel->create($data);
+        $this->voucherModel->saveScope($voucherId, '', $_POST['product_ids'] ?? [], $_POST['category_ids'] ?? []);
+        $this->setFlash('success', 'Đã tạo voucher.');
+        $this->redirect($this->baseUrl('admin/vouchers'));
+    }
+
+    public function editVoucher(string $id): void
+    {
+        $this->requireAdmin();
+        $voucher = $this->voucherModel->find((int) $id);
+        if (!$voucher) { http_response_code(404); $this->view('pages/404'); return; }
+        $products = $this->productModel->findAll('name ASC');
+        $categories = $this->categoryModel->getAllActive();
+        $selectedProducts = array_column($this->voucherModel->getProducts((int) $id), 'product_id');
+        $selectedCategories = array_column($this->voucherModel->getCategories((int) $id), 'category_id');
+        $this->view('pages/vouchers/form', compact('voucher', 'products', 'categories', 'selectedProducts', 'selectedCategories'));
+    }
+
+    public function updateVoucher(string $id): void
+    {
+        $this->requireAdmin();
+        $voucher = $this->voucherModel->find((int) $id);
+        if (!$voucher) { $this->setFlash('error', 'Voucher không tồn tại.'); $this->redirect($this->baseUrl('admin/vouchers')); }
+        $data = $this->voucherInput($_POST);
+        unset($data['code']);
+        $error = $this->validateVoucherInput(array_merge($voucher, $data));
+        if ($error) { $this->setFlash('error', $error); $this->redirect($this->baseUrl('admin/vouchers/' . $id . '/edit')); }
+        $this->voucherModel->update((int) $id, $data);
+        $this->voucherModel->saveScope((int) $id, '', $_POST['product_ids'] ?? [], $_POST['category_ids'] ?? []);
+        $this->setFlash('success', 'Đã cập nhật voucher.');
+        $this->redirect($this->baseUrl('admin/vouchers'));
+    }
+
+    public function deleteVoucher(string $id): void
+    {
+        $this->requireAdmin();
+        $this->voucherModel->softDelete((int) $id);
+        $this->setFlash('success', 'Voucher đã được tắt. Lịch sử sử dụng được giữ nguyên.');
+        $this->redirect($this->baseUrl('admin/vouchers'));
+    }
+
+    private function voucherInput(array $input): array
+    {
+        return [
+            'code' => strtoupper(trim((string) ($input['code'] ?? ''))),
+            'description' => trim((string) ($input['description'] ?? '')) ?: null,
+            'discount_type' => ($input['discount_type'] ?? 'percent') === 'fixed' ? 'fixed' : 'percent',
+            'discount_value' => (float) ($input['discount_value'] ?? 0),
+            'max_discount_amount' => ($input['max_discount_amount'] ?? '') !== '' ? (float) $input['max_discount_amount'] : null,
+            'min_order_value' => (float) ($input['min_order_value'] ?? 0),
+            'usage_limit' => ($input['usage_limit'] ?? '') !== '' ? (int) $input['usage_limit'] : null,
+            'usage_limit_per_user' => ($input['usage_limit_per_user'] ?? '') !== '' ? (int) $input['usage_limit_per_user'] : null,
+            'start_date' => str_replace('T', ' ', (string) ($input['start_date'] ?? '')) . ':00',
+            'end_date' => str_replace('T', ' ', (string) ($input['end_date'] ?? '')) . ':00',
+            'is_active' => !empty($input['is_active']) ? 1 : 0,
+        ];
+    }
+
+    private function validateVoucherInput(array $data): ?string
+    {
+        if (($data['code'] ?? '') === '') return 'Vui lòng nhập mã voucher.';
+        if ((float) ($data['discount_value'] ?? 0) <= 0) return 'Giá trị giảm phải lớn hơn 0.';
+        if (($data['discount_type'] ?? '') === 'percent' && (float) $data['discount_value'] > 100) return 'Giảm theo phần trăm không được vượt quá 100%.';
+        if (strtotime($data['end_date'] ?? '') <= strtotime($data['start_date'] ?? '')) return 'Ngày kết thúc phải sau ngày bắt đầu.';
+        return null;
     }
 
     // ── Payments ──────────────────────────────────────────────────────────────

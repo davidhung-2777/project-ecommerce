@@ -175,12 +175,54 @@ CREATE TABLE IF NOT EXISTS quote_items (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- ------------------------------------------------------------
+-- vouchers
+-- ------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS vouchers (
+    id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    code VARCHAR(50) NOT NULL UNIQUE,
+    description VARCHAR(500),
+    discount_type ENUM('percent', 'fixed') NOT NULL,
+    discount_value DECIMAL(15,2) NOT NULL,
+    max_discount_amount DECIMAL(15,2),
+    min_order_value DECIMAL(15,2) NOT NULL DEFAULT 0,
+    usage_limit INT UNSIGNED,
+    usage_limit_per_user INT UNSIGNED,
+    used_count INT UNSIGNED NOT NULL DEFAULT 0,
+    start_date DATETIME NOT NULL,
+    end_date DATETIME NOT NULL,
+    is_active TINYINT(1) NOT NULL DEFAULT 1,
+    created_by INT UNSIGNED,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX idx_vouchers_listing (is_active, start_date, end_date),
+    FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS voucher_products (
+    voucher_id INT UNSIGNED NOT NULL,
+    product_id INT UNSIGNED NOT NULL,
+    PRIMARY KEY (voucher_id, product_id),
+    FOREIGN KEY (voucher_id) REFERENCES vouchers(id) ON DELETE CASCADE,
+    FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS voucher_categories (
+    voucher_id INT UNSIGNED NOT NULL,
+    category_id INT UNSIGNED NOT NULL,
+    PRIMARY KEY (voucher_id, category_id),
+    FOREIGN KEY (voucher_id) REFERENCES vouchers(id) ON DELETE CASCADE,
+    FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ------------------------------------------------------------
 -- orders
 -- ------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS orders (
     id                  INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     user_id             INT UNSIGNED COMMENT 'NULL for guest',
     quote_id            INT UNSIGNED COMMENT 'Source quote if converted',
+    voucher_id          INT UNSIGNED,
+    voucher_code        VARCHAR(50),
     order_number        VARCHAR(50) UNIQUE NOT NULL,
     status              ENUM('pending','confirmed','processing','shipped','delivered','cancelled','refunded') NOT NULL DEFAULT 'pending',
     invoice_type        ENUM('retail','vat') NOT NULL DEFAULT 'retail',
@@ -214,8 +256,26 @@ CREATE TABLE IF NOT EXISTS orders (
     created_at          DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at          DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id)  REFERENCES users(id)  ON DELETE SET NULL,
-    FOREIGN KEY (quote_id) REFERENCES quotes(id) ON DELETE SET NULL
+    FOREIGN KEY (quote_id) REFERENCES quotes(id) ON DELETE SET NULL,
+    FOREIGN KEY (voucher_id) REFERENCES vouchers(id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- ------------------------------------------------------------
+-- voucher_usages (created after orders because it references orders)
+-- ------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS voucher_usages (
+    id              INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    voucher_id      INT UNSIGNED NOT NULL,
+    user_id         INT UNSIGNED NOT NULL,
+    order_id        INT UNSIGNED NOT NULL,
+    discount_amount DECIMAL(15,2) NOT NULL DEFAULT 0,
+    used_at         DATETIME DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY uq_voucher_order (voucher_id, order_id),
+    FOREIGN KEY (voucher_id) REFERENCES vouchers(id) ON DELETE RESTRICT,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE RESTRICT,
+    FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE RESTRICT,
+    INDEX idx_voucher_user (voucher_id, user_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ------------------------------------------------------------
 -- order_details

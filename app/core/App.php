@@ -32,8 +32,10 @@ class App
         $r->post('/cart/add',                 'CartController',     'add');
         $r->post('/cart/update',              'CartController',     'update');
         $r->post('/cart/remove',              'CartController',     'remove');
+        $r->post('/cart/apply-voucher',      'VoucherController',  'apply');
         $r->get('/cart/count',                'CartController',     'count');
         $r->get('/cart/mini',                 'CartController',     'mini');
+        $r->get('/vouchers/available',        'VoucherController',  'available');
 
         // Checkout
         $r->get('/checkout',                  'CheckoutController', 'index');
@@ -70,6 +72,8 @@ class App
         $r->post('/user/profile/update',      'UserController',     'updateProfile');
         $r->get('/user/orders',               'UserController',     'orders');
         $r->get('/user/orders/:id',           'UserController',     'orderDetail');
+        $r->get('/account/orders',            'UserController',     'orders');
+        $r->get('/account/orders/:id',        'UserController',     'orderDetail');
         $r->get('/user/quotes',               'UserController',     'quotes');
         $r->get('/user/forgot-password',      'UserController',     'forgotForm');
         $r->post('/user/forgot-password',     'UserController',     'forgot');
@@ -116,6 +120,13 @@ class App
         $r->get('/admin/users/:id',           'AdminController',    'userDetail');
         $r->post('/admin/users/:id/block',    'AdminController',    'blockUser');
         $r->post('/admin/users/:id/unblock',  'AdminController',    'unblockUser');
+
+        $r->get('/admin/vouchers',            'AdminController',    'vouchers');
+        $r->get('/admin/vouchers/create',     'AdminController',    'createVoucher');
+        $r->post('/admin/vouchers/create',    'AdminController',    'storeVoucher');
+        $r->get('/admin/vouchers/:id/edit',   'AdminController',    'editVoucher');
+        $r->post('/admin/vouchers/:id/edit',  'AdminController',    'updateVoucher');
+        $r->post('/admin/vouchers/:id/delete','AdminController',    'deleteVoucher');
 
         $r->get('/admin/payments',            'AdminController',    'payments');
         $r->post('/admin/payments/:id/confirm','AdminController',   'confirmPayment');
