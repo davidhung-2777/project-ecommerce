@@ -1,6 +1,7 @@
 <?php
 $baseUrl   = $_ENV['APP_URL'] ?? 'http://localhost/project-ecommerce/public';
-$pageTitle = 'Đặt Hàng Thành Công - DecorNest';
+$isPaid    = ($order['payment_status'] ?? 'pending') === 'paid';
+$pageTitle = ($isPaid ? 'Đặt Hàng Thành Công' : 'Chờ Thanh Toán') . ' - DecorNest';
 ?>
 
 <div class="max-w-3xl mx-auto px-4 sm:px-6 py-12 lg:py-20">
@@ -10,8 +11,8 @@ $pageTitle = 'Đặt Hàng Thành Công - DecorNest';
         <div class="w-20 h-20 rounded-full bg-sage-light text-sage flex items-center justify-center text-3xl mx-auto mb-4 border border-sage/20 shadow-warm">
             🌿
         </div>
-        <h1 class="text-2xl sm:text-3xl font-serif font-bold text-charcoal">Đặt hàng thành công!</h1>
-        <p class="text-xs sm:text-sm text-muted mt-2">Cảm ơn bạn đã tin tưởng lựa chọn DecorNest để chăm sóc không gian ngủ của mình.</p>
+        <h1 id="payment-status-title" class="text-2xl sm:text-3xl font-serif font-bold text-charcoal"><?= $isPaid ? 'Đặt hàng thành công!' : 'Đơn hàng đã được tạo' ?></h1>
+        <p id="payment-status-message" class="text-xs sm:text-sm text-muted mt-2"><?= $isPaid ? 'Cảm ơn bạn đã tin tưởng lựa chọn DecorNest để chăm sóc không gian ngủ của mình.' : 'Vui lòng chuyển khoản đúng số tiền và nội dung bên dưới. Đơn hàng sẽ được xác nhận tự động sau khi hệ thống nhận được tiền.' ?></p>
         <div class="mt-3 inline-block px-4 py-1.5 rounded-full bg-cream border border-sand text-xs font-semibold text-charcoal">
             Mã đơn hàng: <strong class="text-wood font-mono"><?= htmlspecialchars($order['order_number']) ?></strong>
         </div>
@@ -55,19 +56,21 @@ $pageTitle = 'Đặt Hàng Thành Công - DecorNest';
             </div>
 
             <!-- QR Code display -->
-            <div class="sm:col-span-5 flex flex-col items-center justify-center p-4 bg-cream/30 rounded-2xl border border-beige text-center">
+            <div id="qr-section" class="sm:col-span-5 flex flex-col items-center justify-center p-4 bg-cream/30 rounded-2xl border border-beige text-center <?= $isPaid ? 'hidden' : '' ?>">
                 <?php 
-                $qrUrl = !empty($bankInfo['qr_url']) 
-                    ? $bankInfo['qr_url'] 
-                    : "https://img.vietqr.io/image/VCB-1058081721-compact2.png?amount=" . $order['total_amount'] . "&addInfo=" . urlencode($order['order_number']) . "&accountName=TRINH%20TIEN%20HUNG";
+                $qrUrl = $bankInfo['qr_url'] ?? '';
                 ?>
                 <img src="<?= htmlspecialchars($qrUrl) ?>" 
                      alt="VietQR Code chuyển khoản" 
                      class="w-44 h-44 rounded-2xl border-4 border-white shadow-warm bg-white">
                 <p class="text-[11px] font-semibold text-charcoal mt-2">Mở app ngân hàng quét mã QR</p>
-                <p class="text-[10px] text-muted">Hệ thống sẽ tự động xác nhận đơn trong 10 giây</p>
+                <p class="text-[10px] text-muted">Nội dung bắt đầu bằng SEVQR để SePay tự động nhận giao dịch</p>
             </div>
 
+        </div>
+
+        <div id="success-section" class="<?= $isPaid ? '' : 'hidden' ?> mt-6 p-4 bg-sage-light/60 rounded-2xl border border-sage/20 text-sm text-sage-dark">
+            <strong>Đã nhận được thanh toán.</strong> Đơn hàng của bạn đã được xác nhận và sẽ được xử lý sớm.
         </div>
 
         <div class="mt-6 p-3.5 bg-amber-50/70 rounded-2xl border border-amber-200/60 text-xs text-amber-900 flex items-start gap-2">
@@ -148,7 +151,10 @@ $pageTitle = 'Đặt Hàng Thành Công - DecorNest';
 <script>
 document.addEventListener('DOMContentLoaded', () => {
     if (typeof CheckoutPolling !== 'undefined') {
-        new CheckoutPolling('<?= htmlspecialchars($order['order_number']) ?>');
+        new CheckoutPolling(
+            '<?= htmlspecialchars($order['order_number']) ?>',
+            '<?= htmlspecialchars($baseUrl) ?>'
+        );
     }
 });
 </script>

@@ -24,9 +24,9 @@ try {
     $db = \App\Core\Database::getInstance();
     
     $order = $db->fetch(
-        "SELECT id, order_code, status, payment_status, total_amount, expires_at, paid_at, created_at 
+        "SELECT id, order_number, status, payment_status, total_amount, created_at
          FROM orders 
-         WHERE order_code = ?",
+         WHERE order_number = ?",
         [$orderCode]
     );
     
@@ -37,7 +37,7 @@ try {
     }
     
     // Calculate time remaining
-    $expiresAt = $order['expires_at'] ? strtotime($order['expires_at']) : null;
+    $expiresAt = null;
     $now = time();
     $timeRemaining = $expiresAt ? max(0, $expiresAt - $now) : 0;
     
@@ -55,12 +55,12 @@ try {
     }
     
     echo json_encode([
-        'order_code' => $order['order_code'],
+        'order_code' => $order['order_number'],
         'status' => $displayStatus,
         'payment_status' => $order['payment_status'],
         'total_amount' => (float) $order['total_amount'],
-        'expires_at' => $order['expires_at'],
-        'paid_at' => $order['paid_at'],
+        'expires_at' => null,
+        'paid_at' => null,
         'time_remaining_seconds' => $timeRemaining,
         'created_at' => $order['created_at']
     ], JSON_UNESCAPED_UNICODE);

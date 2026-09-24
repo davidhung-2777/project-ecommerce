@@ -50,6 +50,7 @@
                 ['icon' => '📋', 'label' => 'Báo giá', 'url' => '/admin/quotes'],
                 ['icon' => '💳', 'label' => 'Thanh toán', 'url' => '/admin/payments'],
                 ['icon' => '👥', 'label' => 'Khách hàng', 'url' => '/admin/users'],
+                ['icon' => '🎟️', 'label' => 'Voucher', 'url' => '/admin/vouchers'],
                 ['icon' => '📈', 'label' => 'Báo cáo', 'url' => '/admin/reports'],
             ];
             $base    = $_ENV['APP_URL'] ?? '';

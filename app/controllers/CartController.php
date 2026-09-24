@@ -62,9 +62,6 @@ class CartController extends Controller
             ], 422);
         }
 
-        // Get bulk price
-        $unitPrice = $this->productModel->getEffectivePrice($productId, $quantity);
-
         $cart = $this->getCart();
         
         // Kiểm tra nếu sản phẩm đã có trong giỏ
@@ -73,8 +70,10 @@ class CartController extends Controller
             [$cart['id'], $productId]
         );
         
+        $requestedQuantity = $quantity;
+
         if ($existing) {
-            $newQuantity = $existing['quantity'] + $quantity;
+            $newQuantity = $existing['quantity'] + $requestedQuantity;
             
             // Validate lại sau khi cộng dồn
             if ($newQuantity > 100) {
@@ -98,7 +97,8 @@ class CartController extends Controller
             $quantity = $newQuantity;
         }
 
-        $this->cartItemModel->addOrUpdate($cart['id'], $productId, $quantity, $unitPrice, $sizeOption, $colorOption);
+        $unitPrice = $this->productModel->getEffectivePrice($productId, $quantity);
+        $this->cartItemModel->addOrUpdate($cart['id'], $productId, $requestedQuantity, $unitPrice, $sizeOption, $colorOption);
 
         $count = $this->cartItemModel->countItems($cart['id']);
 

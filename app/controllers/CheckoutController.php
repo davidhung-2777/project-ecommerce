@@ -11,6 +11,7 @@ use App\Models\PaymentModel;
 use App\Models\UserModel;
 use App\Models\BusinessProfileModel;
 use App\Services\GhnShippingService;
+use App\Services\VoucherService;
 
 class CheckoutController extends Controller
 {
@@ -24,6 +25,7 @@ class CheckoutController extends Controller
     private UserModel $userModel;
     private BusinessProfileModel $bpModel;
     private GhnShippingService $ghnService;
+    private VoucherService $voucherService;
 
     public function __construct()
     {
@@ -35,6 +37,7 @@ class CheckoutController extends Controller
         $this->userModel        = new UserModel();
         $this->bpModel          = new BusinessProfileModel();
         $this->ghnService       = new GhnShippingService();
+        $this->voucherService   = new VoucherService();
     }
 
     public function index(): void
@@ -103,8 +106,23 @@ class CheckoutController extends Controller
         // Calculate shipping fee từ GHN API
         $shippingFee = $this->calculateShipping($subtotal, $districtId, $wardCode);
         
+        // Xử lý voucher (nếu có)
+        $voucher = null;
+        $voucherDiscount = 0.0;
+        $voucherCode = $_SESSION['applied_voucher_code'] ?? '';
+        if ($voucherCode !== '') {
+            $voucherResult = $this->voucherService->validateCode($voucherCode, $cartData['items'], (int) $_SESSION['user_id']);
+            if (!$voucherResult['success']) {
+                unset($_SESSION['applied_voucher_code']);
+                $this->setFlash('error', $voucherResult['message']);
+                $this->redirect($this->baseUrl('cart'));
+            }
+            $voucher = $voucherResult['voucher'];
+            $voucherDiscount = (float) $voucherResult['discount'];
+        }
+        
         $taxAmount    = $invoiceType === 'vat' ? round($subtotal * 0.10, 2) : 0;
-        $totalAmount  = $subtotal + $shippingFee + $taxAmount;
+        $totalAmount  = max(0, $subtotal - $voucherDiscount + $shippingFee + $taxAmount);
 
         $db = \App\Core\Database::getInstance();
         $db->beginTransaction();
@@ -128,6 +146,8 @@ class CheckoutController extends Controller
                 'shipping_ward_code'   => $this->post('ward_code'),
                 'subtotal'        => $subtotal,
                 'shipping_fee'    => $shippingFee,
+                'voucher_id'      => $voucher['id'] ?? null,
+                'discount_amount' => $voucherDiscount,
                 'tax_amount'      => $taxAmount,
                 'total_amount'    => $totalAmount,
                 'payment_method'  => $paymentMethod,
@@ -143,6 +163,10 @@ class CheckoutController extends Controller
             }
 
             $orderId = $this->orderModel->create($orderData);
+
+            if ($voucher && !$this->voucherService->commitUsage((int) $voucher['id'], (int) $_SESSION['user_id'], (int) $orderId, $voucherDiscount)) {
+                throw new \RuntimeException('Voucher vừa hết lượt sử dụng.');
+            }
 
             // Create order details
             $this->orderDetailModel->createFromCartItems($orderId, $cartData['items']);
@@ -170,6 +194,7 @@ class CheckoutController extends Controller
             }
 
             $db->commit();
+            unset($_SESSION['applied_voucher_code']);
 
             // Store order for payment processing
             $_SESSION['pending_order_id'] = $orderId;

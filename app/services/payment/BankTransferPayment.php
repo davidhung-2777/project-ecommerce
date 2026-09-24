@@ -14,9 +14,11 @@ class BankTransferPayment implements PaymentInterface
 
     public function createTransaction(array $order): array
     {
+        $transferContent = 'SEVQR ' . $order['order_number'];
         $qrUrl = $this->generateVietQrUrl(
             $order['order_number'],
-            $order['total_amount']
+            $order['total_amount'],
+            $transferContent
         );
 
         return [
@@ -28,9 +30,9 @@ class BankTransferPayment implements PaymentInterface
             'account_number' => $this->config['account_number'],
             'bank_name'      => $this->config['bank_name'],
             'bank_branch'    => $this->config['bank_branch'],
-            'transfer_content' => 'DN ' . $order['order_number'],
+            'transfer_content' => $transferContent,
             'amount'         => $order['total_amount'],
-            'message'        => 'Vui lòng chuyển khoản với nội dung: DN ' . $order['order_number'],
+            'message'        => 'Vui lòng chuyển khoản với nội dung: ' . $transferContent,
         ];
     }
 
@@ -67,14 +69,14 @@ class BankTransferPayment implements PaymentInterface
      * Generate VietQR static QR URL.
      * Docs: https://vietqr.io/danh-sach-api/generate-qr/
      */
-    private function generateVietQrUrl(string $orderNumber, float $amount): string
+    private function generateVietQrUrl(string $orderNumber, float $amount, string $transferContent): string
     {
         // Using VietQR quick link format
-        $bankId        = $this->getBankId($this->config['bank_name']);
+        $bankId        = $this->config['bank_code'] ?: $this->getBankId($this->config['bank_name']);
         $accountNo     = $this->config['account_number'];
         $accountName   = urlencode($this->config['account_name']);
         $amountInt     = (int) round($amount);
-        $addInfo       = urlencode('DN ' . $orderNumber);
+        $addInfo       = urlencode($transferContent);
 
         return "https://img.vietqr.io/image/{$bankId}-{$accountNo}-compact2.png"
             . "?amount={$amountInt}&addInfo={$addInfo}&accountName={$accountName}";

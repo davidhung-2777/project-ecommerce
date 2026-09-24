@@ -212,22 +212,11 @@ class ProductModel extends Model
     }
 
     /**
-     * Get effective price based on quantity using price tiers.
+     * Return the current retail price configured by admin.
+     * Quantity tiers are not used for storefront pricing.
      */
     public function getEffectivePrice(int $productId, int $quantity): float
     {
-        $tier = $this->db->fetch(
-            'SELECT price FROM product_price_tiers
-             WHERE product_id = ? AND min_qty <= ?
-               AND (max_qty IS NULL OR max_qty >= ?)
-             ORDER BY min_qty DESC LIMIT 1',
-            [$productId, $quantity, $quantity]
-        );
-
-        if ($tier) {
-            return (float) $tier['price'];
-        }
-
         $product = $this->find($productId);
         return $product ? (float) ($product['sale_price'] ?? $product['price']) : 0.0;
     }

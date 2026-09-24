@@ -74,9 +74,18 @@ class CartModel extends Model
         $cart  = $this->find($cartId);
         if (!$cart) return [];
 
+        // Keep carts in sync when an admin changes a product price.
+        $this->db->query(
+            'UPDATE cart_items ci
+             JOIN products p ON p.id = ci.product_id
+             SET ci.unit_price = COALESCE(p.sale_price, p.price)
+             WHERE ci.cart_id = ?',
+            [$cartId]
+        );
+
         $items = $this->db->fetchAll(
-            'SELECT ci.*, p.name AS product_name, p.thumbnail, p.slug AS product_slug,
-                    p.stock, p.sku
+                'SELECT ci.*, p.name AS product_name, p.thumbnail, p.slug AS product_slug,
+                    p.stock, p.sku, p.install_fee
              FROM cart_items ci
              JOIN products p ON ci.product_id = p.id
              WHERE ci.cart_id = ?
@@ -85,13 +94,16 @@ class CartModel extends Model
         );
 
         $subtotal = 0;
+        $installationFee = 0;
         foreach ($items as &$item) {
             $item['line_total'] = $item['unit_price'] * $item['quantity'];
             $subtotal += $item['line_total'];
+            $installationFee += (float) ($item['install_fee'] ?? 0) * $item['quantity'];
         }
 
         $cart['items']    = $items;
         $cart['subtotal'] = $subtotal;
+        $cart['installation_fee'] = $installationFee;
         $cart['count']    = array_sum(array_column($items, 'quantity'));
 
         return $cart;

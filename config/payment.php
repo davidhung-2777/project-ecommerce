@@ -9,9 +9,10 @@ return [
     'bank_transfer' => [
         'enabled'        => true,
         'name'           => 'Chuyển khoản ngân hàng',
-        'account_name'   => $_ENV['BANK_ACCOUNT_NAME'] ?? '',
-        'account_number' => $_ENV['BANK_ACCOUNT_NUMBER'] ?? '',
-        'bank_name'      => $_ENV['BANK_NAME'] ?? '',
+        'account_name'   => $_ENV['BANK_ACCOUNT_NAME'] ?? ($_ENV['VIETQR_ACCOUNT_NAME'] ?? ''),
+        'account_number' => $_ENV['BANK_ACCOUNT_NUMBER'] ?? ($_ENV['VIETQR_ACCOUNT_NUMBER'] ?? ''),
+        'bank_name'      => $_ENV['BANK_NAME'] ?? ($_ENV['VIETQR_BANK_CODE'] ?? ''),
+        'bank_code'      => $_ENV['BANK_CODE'] ?? ($_ENV['VIETQR_BANK_CODE'] ?? 'VCB'),
         'bank_branch'    => $_ENV['BANK_BRANCH'] ?? '',
         'vietqr_api_key' => $_ENV['VIETQR_API_KEY'] ?? '',
     ],
