@@ -1,0 +1,31 @@
+feat: Tích hợp Giao Hàng Nhanh (GHN) vào checkout
+
+✨ Tính năng mới:
+- Dropdown địa chỉ chuyên nghiệp với tìm kiếm (Select2)
+- Tự động load Tỉnh → Quận → Phường từ GHN API
+- Tính phí vận chuyển chính xác theo địa chỉ thực tế
+- Tự động tạo đơn vận chuyển với GHN sau khi đặt hàng
+- Lưu mã vận đơn và thời gian giao hàng dự kiến
+- Hỗ trợ COD và Non-COD
+
+📝 Files thay đổi:
+- app/controllers/CheckoutController.php: Tích hợp GHN API
+- app/services/GhnShippingService.php: Service GHN đầy đủ
+- app/views/frontend/pages/checkout.php: Form với dropdown
+- public/api/shipping/*.php: API endpoints cho frontend
+- config/migrations/add_shipping_columns.sql: Database migration
+- .env: Thêm GHN credentials
+
+🧪 Test:
+- public/test-ghn.php: Test GHN API
+- public/test-ghn-integration.php: Test tích hợp checkout
+- public/demo-address-dropdown.php: Demo dropdown
+
+📚 Documentation:
+- GHN_CHECKOUT_COMPLETED.md: Hướng dẫn chi tiết
+- HUONG_DAN_TEST.md: Hướng dẫn test nhanh
+- CHECKOUT_INTEGRATION_STEPS.md: Các bước tích hợp
+
+⚠️ Lưu ý:
+- Cần chạy migration SQL trước khi test
+- Cần có GHN_API_TOKEN và GHN_SHOP_ID trong .env

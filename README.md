@@ -60,21 +60,28 @@ cd project-ecommerce
 
 ### 2. Cài Đặt Dependencies
 
+**Cách 1: Sử dụng Composer (Khuyến nghị)**
+
+Nếu chưa có Composer, tải tại: https://getcomposer.org/download/
+
 ```bash
 composer install
 ```
 
+**Cách 2: Không cần Composer**
+
+Thư mục `vendor/` đã được tạo sẵn với autoloader đơn giản. Bạn có thể bỏ qua bước này và chạy trực tiếp.
+
 ### 3. Cấu Hình Database
 
-Tạo database:
-```sql
-CREATE DATABASE decornest CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-```
+**Import database:**
 
-Import schema:
-```bash
-mysql -u root -p decornest < config/migration.sql
-```
+1. Mở phpMyAdmin: http://localhost/phpmyadmin
+2. Click tab **Import**
+3. Chọn file `config/decornest.sql`
+4. Click **Go**
+
+Database sẽ tự động được tạo với tên `decornest`.
 
 ### 4. Cấu Hình Environment
 

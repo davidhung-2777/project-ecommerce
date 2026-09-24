@@ -9,39 +9,6 @@ $oldInput  = $_SESSION['checkout_input'] ?? [];
 unset($_SESSION['checkout_errors'], $_SESSION['checkout_input']);
 ?>
 
-<!-- Select2 for Address Dropdowns -->
-<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
-<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
-<style>
-.select2-container--default .select2-selection--single {
-    background-color: rgba(245, 241, 232, 0.4);
-    border: 1px solid #E8DCC4;
-    border-radius: 0.75rem;
-    height: 46px;
-    padding: 8px 12px;
-}
-.select2-container--default .select2-selection--single .select2-selection__rendered {
-    line-height: 28px;
-    font-size: 0.875rem;
-    color: #2C2C2C;
-}
-.select2-container--default .select2-selection--single .select2-selection__arrow {
-    height: 44px;
-}
-.select2-container--default.select2-container--open .select2-selection--single {
-    border-color: #8B7355;
-    background-color: white;
-}
-.select2-dropdown {
-    border: 1px solid #8B7355;
-    border-radius: 0.75rem;
-}
-.select2-results__option--highlighted {
-    background-color: #8B7355 !important;
-}
-</style>
-
 <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 lg:py-16">
 
     <!-- Steps Indicator -->
@@ -116,41 +83,18 @@ unset($_SESSION['checkout_errors'], $_SESSION['checkout_input']);
                         </div>
                         <div>
                             <label class="block text-[11px] font-semibold text-muted uppercase tracking-wider mb-1.5">Tỉnh / Thành phố *</label>
-                            <select name="province_id" id="province-select" required
-                                    class="w-full bg-cream/40 border border-beige rounded-xl px-4 py-3 text-xs sm:text-sm focus:bg-white focus:outline-none focus:border-wood">
-                                <option value="">Chọn Tỉnh/Thành phố</option>
-                            </select>
-                            <input type="hidden" name="shipping_city" id="shipping-city" value="<?= htmlspecialchars($oldInput['shipping_city'] ?? '') ?>">
-                            <input type="hidden" name="shipping_province_id" id="shipping-province-id">
+                            <input type="text" name="shipping_city" required
+                                   value="<?= htmlspecialchars($oldInput['shipping_city'] ?? '') ?>"
+                                   placeholder="Hà Nội / TP. HCM..."
+                                   class="w-full bg-cream/40 border border-beige rounded-xl px-4 py-3 text-xs sm:text-sm focus:bg-white focus:outline-none focus:border-wood">
                         </div>
                         <div>
-                            <label class="block text-[11px] font-semibold text-muted uppercase tracking-wider mb-1.5">Quận / Huyện *</label>
-                            <select name="district_id" id="district-select" required disabled
-                                    class="w-full bg-cream/40 border border-beige rounded-xl px-4 py-3 text-xs sm:text-sm focus:bg-white focus:outline-none focus:border-wood">
-                                <option value="">Chọn Quận/Huyện</option>
-                            </select>
-                            <input type="hidden" name="shipping_district" id="shipping-district" value="<?= htmlspecialchars($oldInput['shipping_district'] ?? '') ?>">
-                            <input type="hidden" name="shipping_district_id" id="shipping-district-id">
+                            <label class="block text-[11px] font-semibold text-muted uppercase tracking-wider mb-1.5">Quận / Huyện</label>
+                            <input type="text" name="shipping_district"
+                                   value="<?= htmlspecialchars($oldInput['shipping_district'] ?? '') ?>"
+                                   placeholder="Đống Đa, Ba Đình..."
+                                   class="w-full bg-cream/40 border border-beige rounded-xl px-4 py-3 text-xs sm:text-sm focus:bg-white focus:outline-none focus:border-wood">
                         </div>
-                        <div>
-                            <label class="block text-[11px] font-semibold text-muted uppercase tracking-wider mb-1.5">Phường / Xã *</label>
-                            <select name="ward_code" id="ward-select" required disabled
-                                    class="w-full bg-cream/40 border border-beige rounded-xl px-4 py-3 text-xs sm:text-sm focus:bg-white focus:outline-none focus:border-wood">
-                                <option value="">Chọn Phường/Xã</option>
-                            </select>
-                            <input type="hidden" name="shipping_ward" id="shipping-ward">
-                        </div>
-                    </div>
-
-                    <!-- Hiển thị phí vận chuyển -->
-                    <div class="mt-5 p-4 bg-sage-light/30 border border-sage/20 rounded-xl">
-                        <div class="flex items-center justify-between">
-                            <span class="text-xs font-semibold text-muted">Phí vận chuyển:</span>
-                            <span id="shipping-fee-display" class="text-sm font-bold text-charcoal">
-                                <?= number_format($shippingFee) ?>đ
-                            </span>
-                        </div>
-                        <p class="text-[10px] text-muted mt-1">Chọn địa chỉ để tính phí chính xác</p>
                     </div>
 
                     <div class="mt-4">
@@ -326,133 +270,3 @@ unset($_SESSION['checkout_errors'], $_SESSION['checkout_input']);
 
     </form>
 </div>
-
-<script>
-// GHN Address Integration
-$(document).ready(function() {
-    const BASE_URL = '<?= $baseUrl ?>';
-    
-    // Initialize Select2
-    $('#province-select, #district-select, #ward-select').select2({
-        placeholder: 'Chọn...',
-        language: {
-            noResults: () => "Không tìm thấy kết quả",
-            searching: () => "Đang tìm kiếm..."
-        }
-    });
-    
-    // Load provinces on page load
-    loadProvinces();
-    
-    function loadProvinces() {
-        $.get(BASE_URL + '/api/shipping/provinces.php', function(response) {
-            if (response.success) {
-                const select = $('#province-select');
-                select.empty().append('<option value="">Chọn Tỉnh/Thành phố</option>');
-                response.data.forEach(province => {
-                    select.append(new Option(province.ProvinceName, province.ProvinceID));
-                });
-            }
-        });
-    }
-    
-    // Province change → Load districts
-    $('#province-select').on('change', function() {
-        const provinceId = $(this).val();
-        const provinceName = $(this).find('option:selected').text();
-        
-        $('#shipping-city').val(provinceName);
-        $('#shipping-province-id').val(provinceId);
-        
-        // Reset
-        $('#district-select').empty().append('<option value="">Chọn Quận/Huyện</option>').prop('disabled', true).trigger('change');
-        $('#ward-select').empty().append('<option value="">Chọn Phường/Xã</option>').prop('disabled', true).trigger('change');
-        
-        if (!provinceId) return;
-        
-        $.get(BASE_URL + '/api/shipping/districts.php?province_id=' + provinceId, function(response) {
-            if (response.success) {
-                const select = $('#district-select');
-                select.empty().append('<option value="">Chọn Quận/Huyện</option>');
-                response.data.forEach(district => {
-                    select.append(new Option(district.DistrictName, district.DistrictID));
-                });
-                select.prop('disabled', false).trigger('change');
-            }
-        });
-    });
-    
-    // District change → Load wards
-    $('#district-select').on('change', function() {
-        const districtId = $(this).val();
-        const districtName = $(this).find('option:selected').text();
-        
-        $('#shipping-district').val(districtName);
-        $('#shipping-district-id').val(districtId);
-        
-        // Reset
-        $('#ward-select').empty().append('<option value="">Chọn Phường/Xã</option>').prop('disabled', true).trigger('change');
-        
-        if (!districtId) return;
-        
-        $.get(BASE_URL + '/api/shipping/wards.php?district_id=' + districtId, function(response) {
-            if (response.success) {
-                const select = $('#ward-select');
-                select.empty().append('<option value="">Chọn Phường/Xã</option>');
-                response.data.forEach(ward => {
-                    select.append(new Option(ward.WardName, ward.WardCode));
-                });
-                select.prop('disabled', false).trigger('change');
-            }
-        });
-    });
-    
-    // Ward change → Calculate shipping fee
-    $('#ward-select').on('change', function() {
-        const wardCode = $(this).val();
-        const wardName = $(this).find('option:selected').text();
-        const districtId = $('#district-select').val();
-        
-        $('#shipping-ward').val(wardName);
-        
-        if (!wardCode || !districtId) return;
-        
-        // Show loading
-        $('#shipping-fee-display').html('<span class="text-muted">Đang tính...</span>');
-        
-        // Calculate shipping fee via GHN API
-        $.ajax({
-            url: BASE_URL + '/api/shipping/calculate-fee.php',
-            method: 'POST',
-            contentType: 'application/json',
-            data: JSON.stringify({
-                district_id: parseInt(districtId),
-                ward_code: wardCode,
-                weight: 5000, // 5kg default
-                order_value: <?= (int)$subtotal ?>
-            }),
-            success: function(response) {
-                if (response.success && response.fee) {
-                    const fee = response.fee;
-                    $('#shipping-fee-display').text(formatMoney(fee) + 'đ');
-                    
-                    // Update Alpine.js shippingFee
-                    const form = document.querySelector('#checkout-form');
-                    if (form && form.__x) {
-                        form.__x.$data.shippingFee = fee;
-                    }
-                } else {
-                    $('#shipping-fee-display').text('50.000đ');
-                }
-            },
-            error: function() {
-                $('#shipping-fee-display').text('50.000đ');
-            }
-        });
-    });
-    
-    function formatMoney(amount) {
-        return new Intl.NumberFormat('vi-VN').format(amount);
-    }
-});
-</script>
