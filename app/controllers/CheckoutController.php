@@ -232,8 +232,9 @@ class CheckoutController extends Controller
 
         $bankInfo = null;
         if ($order['payment_method'] === 'bank_transfer') {
-            $bankTransfer = new \App\Services\Payment\BankTransferPayment();
-            $bankInfo     = $bankTransfer->createTransaction($order);
+            // Sử dụng VietQRPayment service (có webhook tự động)
+            $vietqr = new \App\Services\Payment\VietQRPayment();
+            $bankInfo = $vietqr->createTransaction($order);
         }
 
         $this->view('pages/checkout-success', compact('order', 'bankInfo'));

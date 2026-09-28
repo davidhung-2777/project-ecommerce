@@ -2,6 +2,53 @@
 
 Hệ thống thương mại điện tử chuyên bán đồ nội thất (giường, tủ, bàn, ghế) với tính năng B2B/B2C, báo giá, và thanh toán đa dạng.
 
+---
+
+## 🚀 Quick Start cho Thành viên Nhóm
+
+### Bước 1: Clone project
+```bash
+cd C:\xampp\htdocs
+git clone https://github.com/davidhung-2777/project-ecommerce.git
+cd project-ecommerce
+```
+
+### Bước 2: Tạo file .env
+```bash
+copy .env.example .env
+```
+
+### Bước 3: Setup database
+- Mở phpMyAdmin: `http://localhost/phpmyadmin`
+- Tạo database: `decornest`
+- Import: `config/decornest.sql`
+- Chạy migrations: `config/migrations/*.sql`
+
+### Bước 4: Test
+```
+http://localhost/project-ecommerce/public/test-ghn-token.php
+```
+
+**📖 Xem hướng dẫn chi tiết**: `HUONG_DAN_SETUP_CHO_THANH_VIEN.md`
+
+---
+
+## ⚠️ LƯU Ý QUAN TRỌNG CHO TEAM:
+
+### 🔑 GHN Token (Giao Hàng Nhanh)
+Token đã được cấu hình sẵn trong `.env.example`:
+```env
+GHN_API_TOKEN=dcb0c22f-ccd5-4d90-9d5c-720ead34f902
+```
+
+**Token này**:
+- ✅ Dùng chung cho cả nhóm
+- ✅ Hoạt động từ **mọi IP** (không cố định)
+- ✅ Tất cả thành viên đều dùng được
+- ❌ **KHÔNG commit file `.env`** lên GitHub
+
+---
+
 ## ✨ Tính Năng Chính
 
 ### 🛒 Frontend (Khách hàng)

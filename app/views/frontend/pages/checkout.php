@@ -352,7 +352,13 @@ $(document).ready(function() {
                 response.data.forEach(province => {
                     select.append(new Option(province.ProvinceName, province.ProvinceID));
                 });
+            } else {
+                console.error('Lỗi load provinces:', response.message);
+                alert('Không thể tải danh sách Tỉnh/Thành phố. Vui lòng thử lại.');
             }
+        }).fail(function(xhr) {
+            console.error('Lỗi kết nối API provinces:', xhr);
+            alert('Lỗi kết nối đến server. Vui lòng kiểm tra kết nối mạng.');
         });
     }
     
@@ -378,7 +384,13 @@ $(document).ready(function() {
                     select.append(new Option(district.DistrictName, district.DistrictID));
                 });
                 select.prop('disabled', false).trigger('change');
+            } else {
+                console.error('Lỗi load districts:', response.message);
+                alert('Không thể tải danh sách Quận/Huyện. Vui lòng thử lại.');
             }
+        }).fail(function(xhr) {
+            console.error('Lỗi kết nối API districts:', xhr);
+            alert('Lỗi kết nối đến server.');
         });
     });
     
@@ -403,7 +415,13 @@ $(document).ready(function() {
                     select.append(new Option(ward.WardName, ward.WardCode));
                 });
                 select.prop('disabled', false).trigger('change');
+            } else {
+                console.error('Lỗi load wards:', response.message);
+                alert('Không thể tải danh sách Phường/Xã. Vui lòng thử lại.');
             }
+        }).fail(function(xhr) {
+            console.error('Lỗi kết nối API wards:', xhr);
+            alert('Lỗi kết nối đến server.');
         });
     });
     
