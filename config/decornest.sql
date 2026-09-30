@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Máy chủ: 127.0.0.1
--- Thời gian đã tạo: Th9 23, 2026 lúc 10:00 AM
+-- Thời gian đã tạo: Th9 30, 2026 lúc 01:05 AM
 -- Phiên bản máy phục vụ: 10.4.32-MariaDB
 -- Phiên bản PHP: 8.0.30
 
@@ -16,13 +16,6 @@ SET time_zone = "+00:00";
 /*!40101 SET @OLD_CHARACTER_SET_RESULTS=@@CHARACTER_SET_RESULTS */;
 /*!40101 SET @OLD_COLLATION_CONNECTION=@@COLLATION_CONNECTION */;
 /*!40101 SET NAMES utf8mb4 */;
-
---
--- Tạo cơ sở dữ liệu `decornest` nếu chưa có
---
-
-CREATE DATABASE IF NOT EXISTS `decornest` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-USE `decornest`;
 
 --
 -- Cơ sở dữ liệu: `decornest`
@@ -72,7 +65,8 @@ INSERT INTO `carts` (`id`, `user_id`, `session_id`, `created_at`, `updated_at`) 
 (8, 11, NULL, '2026-08-30 23:34:23', '2026-08-30 23:34:23'),
 (10, 10, NULL, '2026-08-30 23:42:19', '2026-08-30 23:42:19'),
 (21, NULL, '0e7d4fb51d4d46e6c254c7ca7d30aa1a', '2026-09-17 19:43:54', '2026-09-17 19:43:54'),
-(27, NULL, '054d9bcca7ac7a53b96f9036552da07c', '2026-09-23 13:51:42', '2026-09-23 13:51:42');
+(27, NULL, '054d9bcca7ac7a53b96f9036552da07c', '2026-09-23 13:51:42', '2026-09-23 13:51:42'),
+(29, NULL, 'ac6e117eaf1d94aeacae704607e30325', '2026-09-24 03:33:07', '2026-09-24 03:33:07');
 
 -- --------------------------------------------------------
 
@@ -91,13 +85,6 @@ CREATE TABLE `cart_items` (
   `created_at` datetime DEFAULT current_timestamp(),
   `updated_at` datetime DEFAULT current_timestamp() ON UPDATE current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
---
--- Đang đổ dữ liệu cho bảng `cart_items`
---
-
-INSERT INTO `cart_items` (`id`, `cart_id`, `product_id`, `quantity`, `unit_price`, `size_option`, `color_option`, `created_at`, `updated_at`) VALUES
-(18, 10, 4, 1, 320000.00, NULL, NULL, '2026-09-18 13:54:35', '2026-09-23 13:13:40');
 
 -- --------------------------------------------------------
 
@@ -150,6 +137,7 @@ CREATE TABLE `orders` (
   `id` int(10) UNSIGNED NOT NULL,
   `user_id` int(10) UNSIGNED DEFAULT NULL COMMENT 'NULL for guest',
   `quote_id` int(10) UNSIGNED DEFAULT NULL COMMENT 'Source quote if converted',
+  `voucher_id` int(10) UNSIGNED DEFAULT NULL,
   `order_number` varchar(50) NOT NULL,
   `order_code` varchar(50) DEFAULT NULL,
   `status` enum('pending','confirmed','processing','shipped','delivered','cancelled','expired','needs_review') NOT NULL DEFAULT 'pending',
@@ -158,6 +146,9 @@ CREATE TABLE `orders` (
   `shipping_phone` varchar(20) NOT NULL,
   `shipping_address` text NOT NULL,
   `shipping_city` varchar(100) DEFAULT NULL,
+  `shipping_province_id` int(11) DEFAULT NULL,
+  `shipping_district_id` int(11) DEFAULT NULL,
+  `shipping_ward_code` varchar(20) DEFAULT NULL,
   `shipping_district` varchar(100) DEFAULT NULL,
   `shipping_ward` varchar(100) DEFAULT NULL,
   `vat_company_name` varchar(255) DEFAULT NULL,
@@ -166,6 +157,10 @@ CREATE TABLE `orders` (
   `vat_email` varchar(191) DEFAULT NULL,
   `subtotal` decimal(15,2) NOT NULL DEFAULT 0.00,
   `shipping_fee` decimal(15,2) NOT NULL DEFAULT 0.00,
+  `shipping_code` varchar(50) DEFAULT NULL,
+  `shipping_status` varchar(50) DEFAULT NULL,
+  `expected_delivery` datetime DEFAULT NULL,
+  `shipping_service_id` int(11) DEFAULT NULL,
   `discount_amount` decimal(15,2) NOT NULL DEFAULT 0.00,
   `tax_amount` decimal(15,2) NOT NULL DEFAULT 0.00,
   `total_amount` decimal(15,2) NOT NULL DEFAULT 0.00,
@@ -188,18 +183,23 @@ CREATE TABLE `orders` (
 -- Đang đổ dữ liệu cho bảng `orders`
 --
 
-INSERT INTO `orders` (`id`, `user_id`, `quote_id`, `order_number`, `order_code`, `status`, `invoice_type`, `shipping_name`, `shipping_phone`, `shipping_address`, `shipping_city`, `shipping_district`, `shipping_ward`, `vat_company_name`, `vat_tax_code`, `vat_address`, `vat_email`, `subtotal`, `shipping_fee`, `discount_amount`, `tax_amount`, `total_amount`, `payment_method`, `payment_status`, `qr_image_url`, `expires_at`, `paid_at`, `customer_note`, `admin_note`, `confirmed_at`, `shipped_at`, `delivered_at`, `cancelled_at`, `created_at`, `updated_at`) VALUES
-(1, NULL, NULL, 'DN202608307281D7', NULL, 'pending', 'retail', 'Nguyễn Văn Hưng', '0386228202', 'Láng Hạ Thành Công', 'Hà Nội', 'Ba Đình', NULL, NULL, NULL, NULL, NULL, 320000.00, 50000.00, 0.00, 0.00, 370000.00, 'momo', 'pending', NULL, NULL, NULL, '12h', NULL, NULL, NULL, NULL, NULL, '2026-08-30 23:34:15', '2026-08-30 23:34:15'),
-(2, 11, NULL, 'DN20260830BA60BD', NULL, 'confirmed', 'retail', 'Trịnh Tiến Hưng', '1058081721', 'Láng Hạ Thành Công', 'Hà Nội', 'Ba Đình', NULL, NULL, NULL, NULL, NULL, 320000.00, 50000.00, 0.00, 0.00, 370000.00, 'bank_transfer', 'paid', NULL, NULL, NULL, '12h', NULL, '2026-08-30 18:42:52', NULL, NULL, NULL, '2026-08-30 23:34:51', '2026-08-30 23:42:52'),
-(3, 11, NULL, 'DN2026083045AD67', NULL, 'processing', 'retail', 'Trịnh Tiến Hưng', '1058081721', 'Láng Hạ Thành Công', 'Hà Nội', 'Ba Đình', NULL, NULL, NULL, NULL, NULL, 320000.00, 50000.00, 0.00, 0.00, 370000.00, 'cod', 'pending', NULL, NULL, NULL, '12h', NULL, NULL, NULL, NULL, NULL, '2026-08-30 23:41:56', '2026-09-03 10:58:22'),
-(4, 11, NULL, 'DN20260830A13D83', NULL, 'confirmed', 'retail', 'Trịnh Tiến Hưng', '1058081721', 'Láng Hạ Thành Công', 'Hà Nội', 'Ba Đình', NULL, NULL, NULL, NULL, NULL, 1170000.00, 50000.00, 0.00, 0.00, 1220000.00, 'bank_transfer', 'paid', NULL, NULL, NULL, '', NULL, '2026-09-03 05:58:37', NULL, NULL, NULL, '2026-08-30 23:49:30', '2026-09-03 10:58:37'),
-(5, 11, NULL, 'DN202609032EC1D1', NULL, 'confirmed', 'vat', 'Trịnh Tiến Hưng', '1058081721', 'Thành Công', 'Hà Nội', 'Ba Đình', NULL, 'The Bad God', '012090002', 'Thành Công', NULL, 320000.00, 50000.00, 0.00, 32000.00, 402000.00, 'bank_transfer', 'paid', NULL, NULL, NULL, '', NULL, '2026-09-03 08:46:09', NULL, NULL, NULL, '2026-09-03 13:09:54', '2026-09-03 13:46:09'),
-(6, 10, NULL, 'DN20260903D967D2', NULL, 'cancelled', 'retail', 'Admin DecorNest', '0987654321', 'Láng Hạ Thành Công', 'Hà Nội', '', NULL, NULL, NULL, NULL, NULL, 1200000.00, 50000.00, 0.00, 0.00, 1250000.00, 'vnpay', 'pending', NULL, NULL, NULL, '', NULL, NULL, NULL, NULL, '2026-09-18 08:53:53', '2026-09-03 13:30:21', '2026-09-18 13:53:53'),
-(7, 10, NULL, 'DN20260903188E5F', NULL, 'confirmed', 'retail', 'Admin DecorNest', '0987654321', 'Láng Hạ Thành Công', 'Hà Nội', 'Ba Đình', NULL, NULL, NULL, NULL, NULL, 320000.00, 50000.00, 0.00, 0.00, 370000.00, 'bank_transfer', 'paid', NULL, NULL, NULL, '', NULL, '2026-09-03 08:47:00', NULL, NULL, NULL, '2026-09-03 13:46:41', '2026-09-03 13:47:00'),
-(8, 10, NULL, 'DN2026090422C92E', NULL, 'pending', 'retail', 'Admin DecorNest', '0987654321', 'Láng Hạ Thành Công', 'Hà Nội', 'Ba Đình', NULL, NULL, NULL, NULL, NULL, 4500000.00, 50000.00, 0.00, 0.00, 4550000.00, 'momo', 'pending', NULL, NULL, NULL, '', NULL, NULL, NULL, NULL, NULL, '2026-09-04 13:36:50', '2026-09-04 13:36:50'),
-(9, NULL, NULL, 'DN20260911A3D8EB', NULL, 'pending', 'retail', 'Nguyễn Văn A', '099347377', '120 Đường Láng', 'Hà Nội', 'Đống Đa', NULL, NULL, NULL, NULL, NULL, 4500000.00, 50000.00, 0.00, 0.00, 4550000.00, 'vnpay', 'pending', NULL, NULL, NULL, 'giao trước 12h', NULL, NULL, NULL, NULL, NULL, '2026-09-11 12:58:02', '2026-09-11 12:58:02'),
-(10, 10, NULL, 'DN20260917C14194', NULL, 'confirmed', 'retail', 'Admin DecorNest', '0987654321', 'Láng Hạ Thành Công', 'Hà Nội', 'Ba Đình', NULL, NULL, NULL, NULL, NULL, 320000.00, 50000.00, 0.00, 0.00, 370000.00, 'bank_transfer', 'paid', NULL, NULL, NULL, '', NULL, '2026-09-17 14:37:45', NULL, NULL, NULL, '2026-09-17 19:35:08', '2026-09-17 19:37:45'),
-(11, 10, NULL, 'DN20260917111115', NULL, 'pending', 'retail', 'Admin DecorNest', '0987654321', 'Thành Công', 'Hà Nội', 'Ba Đình', NULL, NULL, NULL, NULL, NULL, 320000.00, 50000.00, 0.00, 0.00, 370000.00, 'momo', 'pending', NULL, NULL, NULL, '', NULL, NULL, NULL, NULL, NULL, '2026-09-17 20:29:21', '2026-09-17 20:29:21');
+INSERT INTO `orders` (`id`, `user_id`, `quote_id`, `voucher_id`, `order_number`, `order_code`, `status`, `invoice_type`, `shipping_name`, `shipping_phone`, `shipping_address`, `shipping_city`, `shipping_province_id`, `shipping_district_id`, `shipping_ward_code`, `shipping_district`, `shipping_ward`, `vat_company_name`, `vat_tax_code`, `vat_address`, `vat_email`, `subtotal`, `shipping_fee`, `shipping_code`, `shipping_status`, `expected_delivery`, `shipping_service_id`, `discount_amount`, `tax_amount`, `total_amount`, `payment_method`, `payment_status`, `qr_image_url`, `expires_at`, `paid_at`, `customer_note`, `admin_note`, `confirmed_at`, `shipped_at`, `delivered_at`, `cancelled_at`, `created_at`, `updated_at`) VALUES
+(1, NULL, NULL, NULL, 'DN202608307281D7', NULL, 'pending', 'retail', 'Nguyễn Văn Hưng', '0386228202', 'Láng Hạ Thành Công', 'Hà Nội', NULL, NULL, NULL, 'Ba Đình', NULL, NULL, NULL, NULL, NULL, 320000.00, 50000.00, NULL, NULL, NULL, NULL, 0.00, 0.00, 370000.00, 'momo', 'pending', NULL, NULL, NULL, '12h', NULL, NULL, NULL, NULL, NULL, '2026-08-30 23:34:15', '2026-08-30 23:34:15'),
+(2, 11, NULL, NULL, 'DN20260830BA60BD', NULL, 'confirmed', 'retail', 'Trịnh Tiến Hưng', '1058081721', 'Láng Hạ Thành Công', 'Hà Nội', NULL, NULL, NULL, 'Ba Đình', NULL, NULL, NULL, NULL, NULL, 320000.00, 50000.00, NULL, NULL, NULL, NULL, 0.00, 0.00, 370000.00, 'bank_transfer', 'paid', NULL, NULL, NULL, '12h', NULL, '2026-08-30 18:42:52', NULL, NULL, NULL, '2026-08-30 23:34:51', '2026-08-30 23:42:52'),
+(3, 11, NULL, NULL, 'DN2026083045AD67', NULL, 'processing', 'retail', 'Trịnh Tiến Hưng', '1058081721', 'Láng Hạ Thành Công', 'Hà Nội', NULL, NULL, NULL, 'Ba Đình', NULL, NULL, NULL, NULL, NULL, 320000.00, 50000.00, NULL, NULL, NULL, NULL, 0.00, 0.00, 370000.00, 'cod', 'pending', NULL, NULL, NULL, '12h', NULL, NULL, NULL, NULL, NULL, '2026-08-30 23:41:56', '2026-09-03 10:58:22'),
+(4, 11, NULL, NULL, 'DN20260830A13D83', NULL, 'confirmed', 'retail', 'Trịnh Tiến Hưng', '1058081721', 'Láng Hạ Thành Công', 'Hà Nội', NULL, NULL, NULL, 'Ba Đình', NULL, NULL, NULL, NULL, NULL, 1170000.00, 50000.00, NULL, NULL, NULL, NULL, 0.00, 0.00, 1220000.00, 'bank_transfer', 'paid', NULL, NULL, NULL, '', NULL, '2026-09-03 05:58:37', NULL, NULL, NULL, '2026-08-30 23:49:30', '2026-09-03 10:58:37'),
+(5, 11, NULL, NULL, 'DN202609032EC1D1', NULL, 'confirmed', 'vat', 'Trịnh Tiến Hưng', '1058081721', 'Thành Công', 'Hà Nội', NULL, NULL, NULL, 'Ba Đình', NULL, 'The Bad God', '012090002', 'Thành Công', NULL, 320000.00, 50000.00, NULL, NULL, NULL, NULL, 0.00, 32000.00, 402000.00, 'bank_transfer', 'paid', NULL, NULL, NULL, '', NULL, '2026-09-03 08:46:09', NULL, NULL, NULL, '2026-09-03 13:09:54', '2026-09-03 13:46:09'),
+(6, 10, NULL, NULL, 'DN20260903D967D2', NULL, 'cancelled', 'retail', 'Admin DecorNest', '0987654321', 'Láng Hạ Thành Công', 'Hà Nội', NULL, NULL, NULL, '', NULL, NULL, NULL, NULL, NULL, 1200000.00, 50000.00, NULL, NULL, NULL, NULL, 0.00, 0.00, 1250000.00, 'vnpay', 'pending', NULL, NULL, NULL, '', NULL, NULL, NULL, NULL, '2026-09-18 08:53:53', '2026-09-03 13:30:21', '2026-09-18 13:53:53'),
+(7, 10, NULL, NULL, 'DN20260903188E5F', NULL, 'confirmed', 'retail', 'Admin DecorNest', '0987654321', 'Láng Hạ Thành Công', 'Hà Nội', NULL, NULL, NULL, 'Ba Đình', NULL, NULL, NULL, NULL, NULL, 320000.00, 50000.00, NULL, NULL, NULL, NULL, 0.00, 0.00, 370000.00, 'bank_transfer', 'paid', NULL, NULL, NULL, '', NULL, '2026-09-03 08:47:00', NULL, NULL, NULL, '2026-09-03 13:46:41', '2026-09-03 13:47:00'),
+(8, 10, NULL, NULL, 'DN2026090422C92E', NULL, 'pending', 'retail', 'Admin DecorNest', '0987654321', 'Láng Hạ Thành Công', 'Hà Nội', NULL, NULL, NULL, 'Ba Đình', NULL, NULL, NULL, NULL, NULL, 4500000.00, 50000.00, NULL, NULL, NULL, NULL, 0.00, 0.00, 4550000.00, 'momo', 'pending', NULL, NULL, NULL, '', NULL, NULL, NULL, NULL, NULL, '2026-09-04 13:36:50', '2026-09-04 13:36:50'),
+(9, NULL, NULL, NULL, 'DN20260911A3D8EB', NULL, 'pending', 'retail', 'Nguyễn Văn A', '099347377', '120 Đường Láng', 'Hà Nội', NULL, NULL, NULL, 'Đống Đa', NULL, NULL, NULL, NULL, NULL, 4500000.00, 50000.00, NULL, NULL, NULL, NULL, 0.00, 0.00, 4550000.00, 'vnpay', 'pending', NULL, NULL, NULL, 'giao trước 12h', NULL, NULL, NULL, NULL, NULL, '2026-09-11 12:58:02', '2026-09-11 12:58:02'),
+(10, 10, NULL, NULL, 'DN20260917C14194', NULL, 'confirmed', 'retail', 'Admin DecorNest', '0987654321', 'Láng Hạ Thành Công', 'Hà Nội', NULL, NULL, NULL, 'Ba Đình', NULL, NULL, NULL, NULL, NULL, 320000.00, 50000.00, NULL, NULL, NULL, NULL, 0.00, 0.00, 370000.00, 'bank_transfer', 'paid', NULL, NULL, NULL, '', NULL, '2026-09-17 14:37:45', NULL, NULL, NULL, '2026-09-17 19:35:08', '2026-09-17 19:37:45'),
+(11, 10, NULL, NULL, 'DN20260917111115', NULL, 'pending', 'retail', 'Admin DecorNest', '0987654321', 'Thành Công', 'Hà Nội', NULL, NULL, NULL, 'Ba Đình', NULL, NULL, NULL, NULL, NULL, 320000.00, 50000.00, NULL, NULL, NULL, NULL, 0.00, 0.00, 370000.00, 'momo', 'pending', NULL, NULL, NULL, '', NULL, NULL, NULL, NULL, NULL, '2026-09-17 20:29:21', '2026-09-17 20:29:21'),
+(12, 10, NULL, NULL, 'DN202609247914AF', NULL, 'pending', 'retail', 'Admin DecorNest', '0987654321', 'LOL', 'Hà Nội', 201, 1484, '1A0111', 'Quận Ba Đình', 'Phường Quán Thánh', NULL, NULL, NULL, NULL, 320000.00, 31002.00, 'GYRU3PX8', 'ready_to_pick', '2026-09-25 16:59:59', NULL, 0.00, 0.00, 351002.00, 'bank_transfer', 'pending', NULL, NULL, NULL, '', NULL, NULL, NULL, NULL, NULL, '2026-09-24 11:35:35', '2026-09-24 11:35:36'),
+(13, 10, NULL, NULL, 'DN20260924732F6B', NULL, 'pending', 'retail', 'Admin DecorNest', '0987654321', 'LOL', 'Hà Nội', 201, 1482, '11003', 'Quận Bắc Từ Liêm', 'Phường Đông Ngạc', NULL, NULL, NULL, NULL, 10000.00, 31002.00, 'GYRU3A33', 'ready_to_pick', '2026-09-25 16:59:59', NULL, 0.00, 0.00, 41002.00, 'bank_transfer', 'pending', NULL, NULL, NULL, '', NULL, NULL, NULL, NULL, NULL, '2026-09-24 11:50:15', '2026-09-24 11:50:15'),
+(14, 10, NULL, NULL, 'DN20260928925C46', 'DH20260928D5B9', 'pending', 'retail', 'Admin DecorNest', '0987654321', 'tây ninh', 'Tây Ninh', 240, 1864, '460410', 'Huyện Dương Minh Châu', 'Xã Suối Đá', NULL, NULL, NULL, NULL, 1200000.00, 50000.00, NULL, NULL, NULL, NULL, 0.00, 0.00, 1250000.00, 'bank_transfer', 'pending', 'https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=000201010212383100069704540103VCB021010580817215303704540712500005802VN5915TRINH+TIEN+HUNG62180814DH20260928D5B96304707F', '2026-09-28 10:36:52', NULL, '', NULL, NULL, NULL, NULL, NULL, '2026-09-28 15:15:37', '2026-09-28 15:21:52'),
+(15, 11, NULL, NULL, 'DN2026093093194E', 'DH20260930F33E', 'pending', 'retail', 'Trịnh Tiến Hưng', '1058081721', 'lol', 'Hưng Yên', 268, 2045, '221009', 'Huyện Văn Giang', 'Xã Thắng Lợi', NULL, NULL, NULL, NULL, 1200000.00, 62503.00, NULL, NULL, NULL, NULL, 0.00, 0.00, 1262503.00, 'bank_transfer', 'pending', 'https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=000201010212383100069704540103VCB021010580817215303704540712625035802VN5915TRINH+TIEN+HUNG62180814DH20260930F33E6304468D', '2026-09-30 01:18:05', NULL, '', NULL, NULL, NULL, NULL, NULL, '2026-09-30 06:03:05', '2026-09-30 06:03:05'),
+(16, 10, NULL, NULL, 'DN20260930246D38', 'DH202609302666', 'pending', 'retail', 'Admin DecorNest', '0987654321', 'tây ninh', 'Tây Ninh', 240, 1865, '460708', 'Huyện Bến Cầu', 'Xã Long Thuận', NULL, NULL, NULL, NULL, 1200000.00, 89996.00, 'GYRNX6R7', 'ready_to_pick', '2026-10-03 16:59:59', NULL, 0.00, 0.00, 1289996.00, 'bank_transfer', 'pending', 'https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=000201010212383100069704540103VCB021010580817215303704540712899965802VN5915TRINH+TIEN+HUNG62180814DH2026093026666304189A', '2026-09-30 01:19:20', NULL, '', NULL, NULL, NULL, NULL, NULL, '2026-09-30 06:04:18', '2026-09-30 06:04:20');
 
 -- --------------------------------------------------------
 
@@ -237,7 +237,12 @@ INSERT INTO `order_details` (`id`, `order_id`, `product_id`, `product_name`, `pr
 (9, 8, 1, 'Giường Đôi Nordic Oak', 'GN-001', '/assets/images/product-placeholder.jpg', NULL, NULL, 1, 4500000.00, 4500000.00),
 (10, 9, 1, 'Giường Đôi Nordic Oak', 'GN-001', '/assets/images/product-placeholder.jpg', NULL, NULL, 1, 4500000.00, 4500000.00),
 (11, 10, 4, 'Bộ Gối Trang Trí Mist', 'GT-001', '/assets/images/product-placeholder.jpg', NULL, NULL, 1, 320000.00, 320000.00),
-(12, 11, 4, 'Bộ Gối Trang Trí Mist', 'GT-001', '/assets/images/product-placeholder.jpg', NULL, NULL, 1, 320000.00, 320000.00);
+(12, 11, 4, 'Bộ Gối Trang Trí Mist', 'GT-001', '/assets/images/product-placeholder.jpg', NULL, NULL, 1, 320000.00, 320000.00),
+(13, 12, 4, 'Bộ Gối Trang Trí Mist', 'GT-001', '/assets/images/product-placeholder.jpg', NULL, NULL, 1, 320000.00, 320000.00),
+(14, 13, 6, 'Gương toàn thân', '1233', NULL, NULL, NULL, 1, 10000.00, 10000.00),
+(15, 14, 5, 'Thảm Len Bắc Âu Fjord', 'TH-001', '/assets/images/product-placeholder.jpg', NULL, NULL, 1, 1200000.00, 1200000.00),
+(16, 15, 5, 'Thảm Len Bắc Âu Fjord', 'TH-001', '/assets/images/product-placeholder.jpg', NULL, NULL, 1, 1200000.00, 1200000.00),
+(17, 16, 5, 'Thảm Len Bắc Âu Fjord', 'TH-001', '/assets/images/product-placeholder.jpg', NULL, NULL, 1, 1200000.00, 1200000.00);
 
 -- --------------------------------------------------------
 
@@ -273,7 +278,12 @@ INSERT INTO `payments` (`id`, `order_id`, `transaction_id`, `method`, `amount`, 
 (8, 8, 'TXN17885038101234', 'momo', 4550000.00, 'pending', NULL, NULL, '2026-09-04 13:36:50', '2026-09-04 13:36:50'),
 (9, 9, 'TXN17891062828850', 'vnpay', 4550000.00, 'pending', NULL, NULL, '2026-09-11 12:58:02', '2026-09-11 12:58:02'),
 (10, 10, 'TXN17896485083350', 'bank_transfer', 370000.00, 'paid', '{\"confirmed_by_admin\":true,\"confirmed_at\":\"2026-09-17 14:37:45\"}', '2026-09-17 14:37:45', '2026-09-17 19:35:08', '2026-09-17 19:37:45'),
-(11, 11, 'TXN17896517613985', 'momo', 370000.00, 'pending', NULL, NULL, '2026-09-17 20:29:21', '2026-09-17 20:29:21');
+(11, 11, 'TXN17896517613985', 'momo', 370000.00, 'pending', NULL, NULL, '2026-09-17 20:29:21', '2026-09-17 20:29:21'),
+(12, 12, 'TXN17902245351239', 'bank_transfer', 351002.00, 'pending', NULL, NULL, '2026-09-24 11:35:35', '2026-09-24 11:35:35'),
+(13, 13, 'TXN17902254155548', 'bank_transfer', 41002.00, 'pending', NULL, NULL, '2026-09-24 11:50:15', '2026-09-24 11:50:15'),
+(14, 14, 'TXN17905833378490', 'bank_transfer', 1250000.00, 'pending', NULL, NULL, '2026-09-28 15:15:37', '2026-09-28 15:15:37'),
+(15, 15, 'TXN17907229851844', 'bank_transfer', 1262503.00, 'pending', NULL, NULL, '2026-09-30 06:03:05', '2026-09-30 06:03:05'),
+(16, 16, 'TXN17907230585544', 'bank_transfer', 1289996.00, 'pending', NULL, NULL, '2026-09-30 06:04:18', '2026-09-30 06:04:18');
 
 -- --------------------------------------------------------
 
@@ -437,9 +447,78 @@ CREATE TABLE `users` (
 --
 
 INSERT INTO `users` (`id`, `name`, `email`, `phone`, `password`, `account_type`, `role`, `avatar`, `is_active`, `email_verified_at`, `remember_token`, `created_at`, `updated_at`) VALUES
-(10, 'Admin DecorNest', 'admin@decornest.com', '0987654321', '$2y$10$jm61sZlVvJOytjo/nIrSA.F3xzDsDGMqHt7KIitaLw8cyiJwBqHrm', 'individual', 'admin', NULL, 1, NULL, NULL, '2026-08-30 23:31:05', '2026-08-30 23:31:05'),
+(10, 'Admin DecorNest', 'admin@decornest.com', '0987654321', '$2y$10$jm61sZlVvJOytjo/nIrSA.F3xzDsDGMqHt7KIitaLw8cyiJwBqHrm', 'individual', 'admin', NULL, 1, NULL, 'cf0abf2a6ba57fc0dbe566f545706e16a8e5f0614b24743e907f3bcbbd67a78c', '2026-08-30 23:31:05', '2026-09-28 14:42:28'),
 (11, 'Trịnh Tiến Hưng', 'tienhungtrinh59@gmail.com', '1058081721', '$2y$10$o.RBS2RSTtU8jRa.6iFL8.c1xyiaV/wBfHDpurk2ingr.8XbvTpGS', 'individual', 'customer', NULL, 1, NULL, NULL, '2026-08-30 23:31:05', '2026-08-30 23:31:05'),
 (12, 'Administrator', 'admin@decornest.vn', '0901234567', '$2y$12$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'individual', 'admin', NULL, 1, NULL, NULL, '2026-08-30 23:33:15', '2026-08-30 23:33:15');
+
+-- --------------------------------------------------------
+
+--
+-- Cấu trúc bảng cho bảng `vouchers`
+--
+
+CREATE TABLE `vouchers` (
+  `id` int(10) UNSIGNED NOT NULL,
+  `code` varchar(50) NOT NULL,
+  `description` varchar(500) DEFAULT NULL,
+  `discount_type` enum('percent','fixed') NOT NULL,
+  `discount_value` decimal(15,2) NOT NULL,
+  `max_discount_amount` decimal(15,2) DEFAULT NULL,
+  `min_order_value` decimal(15,2) NOT NULL DEFAULT 0.00,
+  `usage_limit` int(10) UNSIGNED DEFAULT NULL COMMENT 'NULL means unlimited',
+  `usage_limit_per_user` int(10) UNSIGNED DEFAULT NULL COMMENT 'NULL means unlimited',
+  `used_count` int(10) UNSIGNED NOT NULL DEFAULT 0,
+  `start_date` datetime NOT NULL,
+  `end_date` datetime NOT NULL,
+  `is_active` tinyint(1) NOT NULL DEFAULT 1,
+  `created_by` int(10) UNSIGNED DEFAULT NULL,
+  `created_at` datetime NOT NULL DEFAULT current_timestamp(),
+  `updated_at` datetime NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Đang đổ dữ liệu cho bảng `vouchers`
+--
+
+INSERT INTO `vouchers` (`id`, `code`, `description`, `discount_type`, `discount_value`, `max_discount_amount`, `min_order_value`, `usage_limit`, `usage_limit_per_user`, `used_count`, `start_date`, `end_date`, `is_active`, `created_by`, `created_at`, `updated_at`) VALUES
+(1, '2490197', 'giảm 1 triệu', 'fixed', 1000000.00, NULL, 0.00, NULL, NULL, 0, '2026-09-28 14:43:00', '2026-10-03 14:43:00', 1, 10, '2026-09-28 14:43:26', '2026-09-28 14:43:26');
+
+-- --------------------------------------------------------
+
+--
+-- Cấu trúc bảng cho bảng `voucher_categories`
+--
+
+CREATE TABLE `voucher_categories` (
+  `voucher_id` int(10) UNSIGNED NOT NULL,
+  `category_id` int(10) UNSIGNED NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Cấu trúc bảng cho bảng `voucher_products`
+--
+
+CREATE TABLE `voucher_products` (
+  `voucher_id` int(10) UNSIGNED NOT NULL,
+  `product_id` int(10) UNSIGNED NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Cấu trúc bảng cho bảng `voucher_usages`
+--
+
+CREATE TABLE `voucher_usages` (
+  `id` int(10) UNSIGNED NOT NULL,
+  `voucher_id` int(10) UNSIGNED NOT NULL,
+  `user_id` int(10) UNSIGNED NOT NULL,
+  `order_id` int(10) UNSIGNED NOT NULL,
+  `discount_amount` decimal(15,2) NOT NULL DEFAULT 0.00,
+  `used_at` datetime NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
 -- Chỉ mục cho các bảng đã đổ
@@ -484,7 +563,8 @@ ALTER TABLE `orders`
   ADD UNIQUE KEY `order_code` (`order_code`),
   ADD KEY `user_id` (`user_id`),
   ADD KEY `quote_id` (`quote_id`),
-  ADD KEY `idx_expires_status` (`expires_at`,`status`);
+  ADD KEY `idx_expires_status` (`expires_at`,`status`),
+  ADD KEY `fk_orders_voucher` (`voucher_id`);
 
 --
 -- Chỉ mục cho bảng `order_details`
@@ -552,6 +632,39 @@ ALTER TABLE `users`
   ADD UNIQUE KEY `email` (`email`);
 
 --
+-- Chỉ mục cho bảng `vouchers`
+--
+ALTER TABLE `vouchers`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `uq_vouchers_code` (`code`),
+  ADD KEY `idx_vouchers_validity` (`is_active`,`start_date`,`end_date`),
+  ADD KEY `idx_vouchers_created_by` (`created_by`);
+
+--
+-- Chỉ mục cho bảng `voucher_categories`
+--
+ALTER TABLE `voucher_categories`
+  ADD PRIMARY KEY (`voucher_id`,`category_id`),
+  ADD KEY `fk_voucher_categories_category` (`category_id`);
+
+--
+-- Chỉ mục cho bảng `voucher_products`
+--
+ALTER TABLE `voucher_products`
+  ADD PRIMARY KEY (`voucher_id`,`product_id`),
+  ADD KEY `fk_voucher_products_product` (`product_id`);
+
+--
+-- Chỉ mục cho bảng `voucher_usages`
+--
+ALTER TABLE `voucher_usages`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `uq_voucher_usages_order` (`voucher_id`,`order_id`),
+  ADD KEY `idx_voucher_usages_user` (`voucher_id`,`user_id`),
+  ADD KEY `fk_voucher_usages_user` (`user_id`),
+  ADD KEY `fk_voucher_usages_order` (`order_id`);
+
+--
 -- AUTO_INCREMENT cho các bảng đã đổ
 --
 
@@ -565,13 +678,13 @@ ALTER TABLE `business_profiles`
 -- AUTO_INCREMENT cho bảng `carts`
 --
 ALTER TABLE `carts`
-  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=28;
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=32;
 
 --
 -- AUTO_INCREMENT cho bảng `cart_items`
 --
 ALTER TABLE `cart_items`
-  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=19;
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=24;
 
 --
 -- AUTO_INCREMENT cho bảng `categories`
@@ -583,19 +696,19 @@ ALTER TABLE `categories`
 -- AUTO_INCREMENT cho bảng `orders`
 --
 ALTER TABLE `orders`
-  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=12;
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=17;
 
 --
 -- AUTO_INCREMENT cho bảng `order_details`
 --
 ALTER TABLE `order_details`
-  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=13;
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=18;
 
 --
 -- AUTO_INCREMENT cho bảng `payments`
 --
 ALTER TABLE `payments`
-  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=12;
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=17;
 
 --
 -- AUTO_INCREMENT cho bảng `payment_webhook_logs`
@@ -634,6 +747,18 @@ ALTER TABLE `users`
   MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=13;
 
 --
+-- AUTO_INCREMENT cho bảng `vouchers`
+--
+ALTER TABLE `vouchers`
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+
+--
+-- AUTO_INCREMENT cho bảng `voucher_usages`
+--
+ALTER TABLE `voucher_usages`
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
+
+--
 -- Các ràng buộc cho các bảng đã đổ
 --
 
@@ -666,6 +791,7 @@ ALTER TABLE `categories`
 -- Các ràng buộc cho bảng `orders`
 --
 ALTER TABLE `orders`
+  ADD CONSTRAINT `fk_orders_voucher` FOREIGN KEY (`voucher_id`) REFERENCES `vouchers` (`id`) ON DELETE SET NULL,
   ADD CONSTRAINT `orders_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE SET NULL,
   ADD CONSTRAINT `orders_ibfk_2` FOREIGN KEY (`quote_id`) REFERENCES `quotes` (`id`) ON DELETE SET NULL;
 
@@ -712,6 +838,34 @@ ALTER TABLE `quotes`
 ALTER TABLE `quote_items`
   ADD CONSTRAINT `quote_items_ibfk_1` FOREIGN KEY (`quote_id`) REFERENCES `quotes` (`id`) ON DELETE CASCADE,
   ADD CONSTRAINT `quote_items_ibfk_2` FOREIGN KEY (`product_id`) REFERENCES `products` (`id`) ON DELETE CASCADE;
+
+--
+-- Các ràng buộc cho bảng `vouchers`
+--
+ALTER TABLE `vouchers`
+  ADD CONSTRAINT `fk_vouchers_created_by` FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE SET NULL;
+
+--
+-- Các ràng buộc cho bảng `voucher_categories`
+--
+ALTER TABLE `voucher_categories`
+  ADD CONSTRAINT `fk_voucher_categories_category` FOREIGN KEY (`category_id`) REFERENCES `categories` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `fk_voucher_categories_voucher` FOREIGN KEY (`voucher_id`) REFERENCES `vouchers` (`id`) ON DELETE CASCADE;
+
+--
+-- Các ràng buộc cho bảng `voucher_products`
+--
+ALTER TABLE `voucher_products`
+  ADD CONSTRAINT `fk_voucher_products_product` FOREIGN KEY (`product_id`) REFERENCES `products` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `fk_voucher_products_voucher` FOREIGN KEY (`voucher_id`) REFERENCES `vouchers` (`id`) ON DELETE CASCADE;
+
+--
+-- Các ràng buộc cho bảng `voucher_usages`
+--
+ALTER TABLE `voucher_usages`
+  ADD CONSTRAINT `fk_voucher_usages_order` FOREIGN KEY (`order_id`) REFERENCES `orders` (`id`),
+  ADD CONSTRAINT `fk_voucher_usages_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`),
+  ADD CONSTRAINT `fk_voucher_usages_voucher` FOREIGN KEY (`voucher_id`) REFERENCES `vouchers` (`id`);
 COMMIT;
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;

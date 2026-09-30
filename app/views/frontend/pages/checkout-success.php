@@ -64,7 +64,7 @@ $pageTitle = ($isPaid ? 'Đặt Hàng Thành Công' : 'Chờ Thanh Toán') . ' -
                      alt="VietQR Code chuyển khoản" 
                      class="w-44 h-44 rounded-2xl border-4 border-white shadow-warm bg-white">
                 <p class="text-[11px] font-semibold text-charcoal mt-2">Mở app ngân hàng quét mã QR</p>
-                <p class="text-[10px] text-muted">Nội dung bắt đầu bằng SEVQR để SePay tự động nhận giao dịch</p>
+                <p class="text-[10px] text-muted">Hệ thống tự động xác nhận trong 3-5 giây sau khi chuyển khoản</p>
             </div>
 
         </div>

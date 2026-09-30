@@ -96,9 +96,9 @@
                     Dịch vụ & Hỗ trợ
                 </h4>
                 <ul class="space-y-2.5 text-xs text-cream/70">
-                    <li><a href="#" class="hover:text-wood transition">Chính sách giao hàng & lắp đặt</a></li>
-                    <li><a href="#" class="hover:text-wood transition">Chính sách đổi trả 30 ngày</a></li>
-                    <li><a href="#" class="hover:text-wood transition">Bảo hành sản phẩm 24 tháng</a></li>
+                    <li><a href="<?= $baseUrl ?>/policy/shipping" class="hover:text-wood transition">Chính sách giao hàng & lắp đặt</a></li>
+                    <li><a href="<?= $baseUrl ?>/policy/return" class="hover:text-wood transition">Chính sách đổi trả 30 ngày</a></li>
+                    <li><a href="<?= $baseUrl ?>/policy/warranty" class="hover:text-wood transition">Bảo hành sản phẩm 24 tháng</a></li>
                     <li><a href="#" class="hover:text-wood transition">Bí quyết setup phòng ngủ ngủ ngon</a></li>
                     <li><a href="<?= $baseUrl ?>/quote" class="hover:text-wood transition text-amber-warm font-medium">Báo giá B2B Homestay & Khách sạn</a></li>
                 </ul>
@@ -129,8 +129,8 @@
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-cream/50">
             <p>© 2026 DecorNest. Tất cả quyền được bảo lưu. Chốn về an yên cho mỗi giấc ngủ.</p>
             <div class="flex items-center gap-6">
-                <a href="#" class="hover:text-wood transition">Chính sách bảo mật</a>
-                <a href="#" class="hover:text-wood transition">Điều khoản dịch vụ</a>
+                <a href="<?= $baseUrl ?>/policy/privacy" class="hover:text-wood transition">Chính sách bảo mật</a>
+                <a href="<?= $baseUrl ?>/policy/terms" class="hover:text-wood transition">Điều khoản dịch vụ</a>
                 <span>🇻🇳 Việt Nam</span>
             </div>
         </div>

@@ -89,6 +89,13 @@ class App
         // Orders
         $r->get('/orders/:id',                'OrderController',    'show');
 
+        // Policy Pages
+        $r->get('/policy/return',             'PolicyController',   'returnPolicy');
+        $r->get('/policy/warranty',           'PolicyController',   'warrantyPolicy');
+        $r->get('/policy/shipping',           'PolicyController',   'shippingPolicy');
+        $r->get('/policy/privacy',            'PolicyController',   'privacyPolicy');
+        $r->get('/policy/terms',              'PolicyController',   'termsOfService');
+
         // ── Admin ─────────────────────────────────────────────
         $r->get('/admin',                     'AdminController',    'dashboard');
         $r->get('/admin/dashboard',           'AdminController',    'dashboard');

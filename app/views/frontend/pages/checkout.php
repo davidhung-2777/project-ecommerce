@@ -2,10 +2,20 @@
 $baseUrl   = $_ENV['APP_URL'] ?? 'http://localhost/project-ecommerce/public';
 $pageTitle = 'Thanh Toán Đơn Hàng - DecorNest';
 $items     = $cartData['items'] ?? [];
+$cartItems = $cartData['items'] ?? []; // For Alpine.js
 $subtotal  = $cartData['subtotal'] ?? 0;
 $shippingFee = (float) ($cartData['installation_fee'] ?? 0);
 $errors    = $_SESSION['checkout_errors'] ?? [];
 $oldInput  = $_SESSION['checkout_input'] ?? [];
+
+// Voucher data
+$appliedVoucherCode = $_SESSION['applied_voucher_code'] ?? '';
+$voucherDiscount = 0;
+if ($appliedVoucherCode) {
+    $voucherData = $_SESSION['voucher_data'] ?? [];
+    $voucherDiscount = (float) ($voucherData['discount'] ?? 0);
+}
+
 unset($_SESSION['checkout_errors'], $_SESSION['checkout_input']);
 ?>
 
@@ -14,6 +24,7 @@ unset($_SESSION['checkout_errors'], $_SESSION['checkout_input']);
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 <style>
+[x-cloak] { display: none !important; }
 .select2-container--default .select2-selection--single {
     background-color: rgba(245, 241, 232, 0.4);
     border: 1px solid #E8DCC4;
@@ -75,10 +86,67 @@ unset($_SESSION['checkout_errors'], $_SESSION['checkout_input']);
               invoiceType: '<?= $oldInput['invoice_type'] ?? 'retail' ?>',
               paymentMethod: '<?= $oldInput['payment_method'] ?? 'bank_transfer' ?>',
               subtotal: <?= (float)$subtotal ?>,
+              voucherDiscount: <?= (float)$voucherDiscount ?>,
+              appliedVoucherCode: '<?= htmlspecialchars($appliedVoucherCode ?? '', ENT_QUOTES) ?>',
               shippingFee: <?= (float)$shippingFee ?>,
+              voucherCode: '',
+              applyingVoucher: false,
+              voucherError: '',
+              availableVouchers: [],
+              showVoucherSuggestions: false,
               get vatAmount() { return this.invoiceType === 'vat' ? Math.round(this.subtotal * 0.10) : 0; },
-              get total() { return this.subtotal + this.shippingFee + this.vatAmount; }
-          }">
+              get total() { return Math.max(0, this.subtotal - this.voucherDiscount + this.shippingFee + this.vatAmount); },
+              async loadAvailableVouchers() {
+                  try {
+                      const response = await fetch('<?= $baseUrl ?>/vouchers/available');
+                      const data = await response.json();
+                      if (data.success) {
+                          this.availableVouchers = data.vouchers || [];
+                      }
+                  } catch (e) {
+                      console.error('Error loading vouchers:', e);
+                  }
+              },
+              async applyVoucher() {
+                  if (!this.voucherCode.trim()) return;
+                  this.applyingVoucher = true;
+                  this.voucherError = '';
+                  try {
+                      const cartItems = <?= json_encode(array_map(function($item) {
+                          return [
+                              'product_id' => $item['product_id'],
+                              'quantity' => $item['quantity']
+                          ];
+                      }, $cartItems)) ?>;
+                      const response = await fetch('<?= $baseUrl ?>/cart/apply-voucher', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ code: this.voucherCode.toUpperCase(), cart_items: cartItems })
+                      });
+                      const data = await response.json();
+                      if (data.success) {
+                          this.voucherDiscount = data.discount;
+                          this.appliedVoucherCode = data.code;
+                          this.voucherCode = '';
+                          this.voucherError = '';
+                          this.showVoucherSuggestions = false;
+                      } else {
+                          this.voucherError = data.error || 'Mã không hợp lệ';
+                      }
+                  } catch (e) {
+                      this.voucherError = 'Lỗi kết nối. Vui lòng thử lại.';
+                  } finally {
+                      this.applyingVoucher = false;
+                  }
+              },
+              removeVoucher() {
+                  this.voucherDiscount = 0;
+                  this.appliedVoucherCode = '';
+                  this.voucherCode = '';
+                  this.voucherError = '';
+              }
+          }"
+          x-init="<?= empty($appliedVoucherCode) ? 'loadAvailableVouchers()' : '' ?>">
 
         <div class="grid lg:grid-cols-12 gap-10">
             
@@ -267,6 +335,16 @@ unset($_SESSION['checkout_errors'], $_SESSION['checkout_input']);
                 <div class="bg-cream/60 border border-beige rounded-3xl p-6 sm:p-8 sticky top-28 space-y-6 shadow-warm">
                     <h3 class="font-serif font-bold text-lg text-charcoal pb-4 border-b border-beige">Chi tiết đơn hàng</h3>
 
+                    <?php if (empty($appliedVoucherCode)): ?>
+                    <!-- Thông báo chưa có voucher -->
+                    <div class="p-3 bg-amber-50/50 border border-amber-200/60 rounded-xl text-xs">
+                        <p class="text-amber-900 flex items-start gap-2">
+                            <span>💡</span>
+                            <span>Bạn có mã giảm giá? <a href="<?= $baseUrl ?>/cart" class="font-bold text-wood hover:underline">Quay lại giỏ hàng</a> để áp dụng voucher.</span>
+                        </p>
+                    </div>
+                    <?php endif; ?>
+
                     <!-- Mini items preview -->
                     <div class="space-y-3.5 max-h-64 overflow-y-auto divide-y divide-beige/50">
                         <?php foreach ($items as $item): ?>
@@ -295,6 +373,99 @@ unset($_SESSION['checkout_errors'], $_SESSION['checkout_input']);
                             <span>Tạm tính</span>
                             <span class="font-semibold text-charcoal"><?= number_format($subtotal) ?>đ</span>
                         </div>
+                        
+                        <!-- Voucher Section -->
+                        <div class="border border-sage/20 rounded-xl p-4 bg-sage-light/10 space-y-3">
+                            <!-- Applied Voucher Display -->
+                            <div x-show="appliedVoucherCode" x-cloak>
+                                <div class="flex items-center justify-between bg-sage-light/30 px-3 py-2.5 rounded-lg border border-sage/20">
+                                    <div class="flex items-center gap-2">
+                                        <span class="text-lg">🎟️</span>
+                                        <div>
+                                            <p class="text-xs text-sage-dark/70">Mã giảm giá</p>
+                                            <p class="font-mono font-bold text-sage" x-text="appliedVoucherCode"></p>
+                                        </div>
+                                    </div>
+                                    <div class="text-right">
+                                        <p class="font-bold text-sage" x-text="'-' + new Intl.NumberFormat('vi-VN').format(voucherDiscount) + 'đ'"></p>
+                                        <button type="button" @click="removeVoucher()" 
+                                                class="text-xs text-red-600 hover:text-red-800 underline">
+                                            Xóa
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Voucher Input (show if no voucher applied) -->
+                            <div x-show="!appliedVoucherCode" x-cloak>
+                                <div class="space-y-2">
+                                    <label class="text-xs font-semibold text-charcoal flex items-center gap-1.5">
+                                        <span>🎟️</span>
+                                        <span>Mã giảm giá</span>
+                                    </label>
+                                    <div class="flex gap-2">
+                                        <input type="text" 
+                                               x-model="voucherCode"
+                                               @keyup.enter="applyVoucher()"
+                                               placeholder="Nhập mã voucher"
+                                               class="flex-1 px-3 py-2 border border-sage/30 rounded-lg text-sm focus:outline-none focus:border-sage uppercase"
+                                               :disabled="applyingVoucher">
+                                        <button type="button" 
+                                                @click="applyVoucher()"
+                                                :disabled="applyingVoucher || !voucherCode.trim()"
+                                                class="px-4 py-2 bg-sage hover:bg-sage-dark text-white rounded-lg text-xs font-bold transition disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap">
+                                            <span x-show="!applyingVoucher">Áp dụng</span>
+                                            <span x-show="applyingVoucher">Đang xử lý...</span>
+                                        </button>
+                                    </div>
+                                    <!-- Error Message -->
+                                    <p x-show="voucherError" x-text="voucherError" class="text-xs text-red-600 mt-1" x-cloak></p>
+                                    
+                                    <!-- Available Vouchers Suggestions -->
+                                    <div x-show="availableVouchers.length > 0" class="mt-3" x-cloak>
+                                        <button type="button" 
+                                                @click="showVoucherSuggestions = !showVoucherSuggestions"
+                                                class="text-xs text-sage hover:text-sage-dark font-semibold flex items-center gap-1">
+                                            <span x-show="!showVoucherSuggestions">📋 Xem mã khả dụng (</span>
+                                            <span x-show="showVoucherSuggestions">🔽 Ẩn mã khả dụng (</span>
+                                            <span x-text="availableVouchers.length"></span>
+                                            <span>)</span>
+                                        </button>
+                                        
+                                        <div x-show="showVoucherSuggestions" 
+                                             x-transition
+                                             class="mt-2 space-y-2 max-h-48 overflow-y-auto">
+                                            <template x-for="voucher in availableVouchers" :key="voucher.code">
+                                                <div class="bg-white border border-sage/20 rounded-lg p-3 hover:border-sage transition cursor-pointer"
+                                                     @click="voucherCode = voucher.code; applyVoucher()">
+                                                    <div class="flex items-start justify-between gap-2">
+                                                        <div class="flex-1">
+                                                            <p class="font-mono font-bold text-sage text-sm" x-text="voucher.code"></p>
+                                                            <p class="text-xs text-muted mt-0.5" x-text="voucher.description"></p>
+                                                        </div>
+                                                        <div class="text-right">
+                                                            <p class="text-xs font-bold text-sage-dark" 
+                                                               x-text="voucher.discount_type === 'percent' ? '-' + voucher.discount_value + '%' : '-' + new Intl.NumberFormat('vi-VN').format(voucher.discount_value) + 'đ'">
+                                                            </p>
+                                                            <button type="button" class="text-xs text-sage hover:text-sage-dark underline mt-1">
+                                                                Áp dụng
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </template>
+                                        </div>
+                                    </div>
+
+                                    <!-- No Vouchers Available Message -->
+                                    <p x-show="availableVouchers.length === 0 && !applyingVoucher" 
+                                       class="text-xs text-muted italic" x-cloak>
+                                        💡 Hiện chưa có mã giảm giá khả dụng cho đơn hàng này
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                        
                         <div class="flex justify-between text-muted">
                             <span>Phí lắp đặt</span>
                             <span class="text-sage font-medium"><?= $shippingFee === 0 ? 'Miễn phí' : number_format($shippingFee) . 'đ' ?></span>
