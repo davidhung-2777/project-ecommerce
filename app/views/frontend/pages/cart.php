@@ -178,18 +178,70 @@ $subtotal  = $cartData['subtotal'] ?? 0;
 </div>
 
 <script>
+const APP_URL = '<?= $baseUrl ?>';
+const IS_LOGGED_IN = <?= !empty($_SESSION['user_id']) ? 'true' : 'false' ?>;
+
 async function applyVoucher() {
     const message = document.getElementById('voucher-message');
     const code = document.getElementById('voucher-code').value.trim();
+    
+    if (!code) {
+        message.className = 'text-xs text-red-600';
+        message.textContent = 'Vui lòng nhập mã voucher.';
+        return;
+    }
+    
+    // Check if user is logged in
+    if (!IS_LOGGED_IN) {
+        message.className = 'text-xs text-red-600';
+        message.textContent = 'Vui lòng đăng nhập để sử dụng voucher.';
+        setTimeout(() => {
+            window.location.href = APP_URL + '/user/login?redirect=' + encodeURIComponent(window.location.pathname);
+        }, 1500);
+        return;
+    }
+    
     const cartItems = <?= json_encode(array_map(static fn(array $item): array => ['product_id' => (int) $item['product_id'], 'quantity' => (int) $item['quantity']], $items), JSON_UNESCAPED_UNICODE) ?>;
-    message.className = 'text-xs text-muted'; message.textContent = 'Đang kiểm tra...';
-    const response = await fetch(APP_URL + '/cart/apply-voucher', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({code, cart_items: cartItems}) });
-    const data = await response.json();
-    if (!data.success) { message.className = 'text-xs text-red-600'; message.textContent = data.message || 'Không thể áp dụng voucher.'; return; }
-    message.className = 'text-xs text-sage'; message.textContent = 'Đã áp dụng mã ' + data.code;
-    document.getElementById('voucher-discount-row').classList.remove('hidden');
-    document.getElementById('voucher-discount-row').classList.add('flex');
-    document.getElementById('voucher-discount').textContent = '-' + Number(data.discount).toLocaleString('vi-VN') + 'đ';
-    document.getElementById('cart-total').textContent = Number(data.final_total).toLocaleString('vi-VN') + 'đ';
+    
+    message.className = 'text-xs text-muted flex items-center gap-1';
+    message.innerHTML = '<span>Đang kiểm tra...</span>';
+    
+    try {
+        const response = await fetch(APP_URL + '/cart/apply-voucher', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                code: code,
+                cart_items: cartItems
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (!data.success) {
+            message.className = 'text-xs text-red-600';
+            message.textContent = data.message || 'Voucher chưa áp dụng được. Vui lòng kiểm tra lại.';
+            return;
+        }
+        
+        // Success - show discount
+        message.className = 'text-xs text-sage';
+        message.textContent = '✓ Đã áp dụng mã giảm giá: ' + data.code.toUpperCase();
+        
+        // Show discount row
+        document.getElementById('voucher-discount-row').classList.remove('hidden');
+        document.getElementById('voucher-discount-row').classList.add('flex');
+        document.getElementById('voucher-discount').textContent = '-' + Number(data.discount).toLocaleString('vi-VN') + 'đ';
+        
+        // Update total
+        document.getElementById('cart-total').textContent = Number(data.final_total).toLocaleString('vi-VN') + 'đ';
+        
+    } catch (error) {
+        console.error('Error applying voucher:', error);
+        message.className = 'text-xs text-red-600';
+        message.textContent = 'Có lỗi xảy ra. Vui lòng thử lại.';
+    }
 }
 </script>
