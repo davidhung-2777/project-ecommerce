@@ -4,7 +4,7 @@ namespace App\Services\Payment;
 
 /**
  * VietQR Payment Service
- * Tích hợp với SePay hoặc Casso để tự động nhận webhook khi có giao dịch
+ * Tích hợp với SePay để tự động nhận webhook khi có giao dịch
  * 
  * API Documentation:
  * - SePay: https://my.sepay.vn/userapi/docs/
@@ -12,7 +12,7 @@ namespace App\Services\Payment;
  */
 class VietQRPayment implements PaymentInterface
 {
-    private string $provider; // 'sepay' hoặc 'casso'
+    private string $provider;
     private string $apiKey;
     private string $accountNumber;
     private string $accountName;

@@ -352,8 +352,20 @@ $(document).ready(function() {
                 response.data.forEach(province => {
                     select.append(new Option(province.ProvinceName, province.ProvinceID));
                 });
+            } else {
+                showAddressError(response.message || 'Không thể tải danh sách tỉnh/thành phố.');
             }
+        }).fail(function(xhr) {
+            const message = xhr.responseJSON?.message || 'Không thể kết nối dịch vụ địa chỉ GHN.';
+            showAddressError(message);
         });
+    }
+
+    function showAddressError(message) {
+        const select = $('#province-select');
+        select.empty().append(new Option('Lỗi tải tỉnh/thành phố: ' + message, ''));
+        select.prop('disabled', true).trigger('change');
+        console.error('GHN address error:', message);
     }
     
     // Province change → Load districts
