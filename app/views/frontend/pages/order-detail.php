@@ -98,4 +98,140 @@ $pageTitle = 'Chi Tiết Đơn Hàng #' . htmlspecialchars($order['order_number'
         </div>
     </div>
 
+    <!-- Shipping Tracking -->
+    <?php if (!empty($order['shipping_code'])): ?>
+    <div class="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-3xl border-2 border-indigo-200 p-6 shadow-warm mb-8">
+        <div class="flex items-center justify-between mb-4">
+            <h4 class="font-serif font-bold text-lg text-charcoal flex items-center gap-2">
+                <span class="text-2xl">🚚</span> Vận chuyển
+            </h4>
+            <button onclick="refreshTracking()" class="text-xs text-indigo-600 hover:text-indigo-800 font-semibold">
+                🔄 Làm mới
+            </button>
+        </div>
+
+        <div class="bg-white/80 backdrop-blur rounded-2xl p-4 mb-4">
+            <div class="flex items-center gap-3 mb-2">
+                <span class="text-2xl">📦</span>
+                <div>
+                    <p class="text-xs text-muted">Mã vận đơn GHN</p>
+                    <p class="font-mono font-bold text-charcoal"><?= htmlspecialchars($order['shipping_code']) ?></p>
+                </div>
+            </div>
+            <p class="text-xs text-muted mt-2">
+                <?php if (str_starts_with($order['shipping_code'], 'DEMO')): ?>
+                ⚠️ Đây là mã vận đơn DEMO - Tracking đồng bộ với trạng thái đơn hàng
+                <?php else: ?>
+                Đơn vị vận chuyển: <span class="font-semibold">Giao Hàng Nhanh (GHN)</span>
+                <?php endif; ?>
+            </p>
+        </div>
+
+        <div id="tracking-info" class="bg-white/60 rounded-2xl p-4 text-sm">
+            <div class="flex items-center justify-center py-8">
+                <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+            </div>
+        </div>
+
+        <p class="text-[10px] text-muted text-center mt-3">
+            💡 Bấm "Làm mới" để cập nhật tracking mới nhất
+        </p>
+    </div>
+    <?php endif; ?>
+
 </div>
+
+<?php if (!empty($order['shipping_code'])): ?>
+<script>
+const orderId = <?= (int) $order['id'] ?>;
+
+function loadTracking() {
+    fetch(`<?= $baseUrl ?>/api/tracking.php?id=<?= (int) $order['id'] ?>`, {
+        credentials: 'same-origin' // Gửi cookie session
+    })
+        .then(r => {
+            if (!r.ok) {
+                throw new Error(`HTTP ${r.status}`);
+            }
+            return r.json();
+        })
+        .then(data => {
+            if (data.success) {
+                displayTracking(data.tracking);
+            } else {
+                document.getElementById('tracking-info').innerHTML = `
+                    <p class="text-center text-red-600 text-xs">${data.message || 'Không thể tải thông tin tracking'}</p>
+                `;
+            }
+        })
+        .catch(err => {
+            console.error('Tracking error:', err);
+            document.getElementById('tracking-info').innerHTML = `
+                <p class="text-center text-muted text-xs">Lỗi: ${err.message}. Vui lòng đăng nhập lại.</p>
+            `;
+        });
+}
+
+function displayTracking(tracking) {
+    const trackingData = tracking.data || {};
+    const logs = trackingData.log || [];
+
+    const statusIcons = {
+        'ready_to_pick': '📦',
+        'picking': '🚶',
+        'picked': '✅',
+        'storing': '🏪',
+        'delivering': '🚚',
+        'delivered': '🎉',
+        'cancelled': '❌'
+    };
+
+    let html = `
+        <div class="mb-4">
+            <div class="flex items-center gap-3">
+                <span class="text-3xl">${statusIcons[trackingData.status] || '📦'}</span>
+                <div>
+                    <p class="font-serif font-bold text-charcoal">${trackingData.status_text || 'Đang xử lý'}</p>
+                    <p class="text-xs text-muted">Dự kiến giao: ${new Date(trackingData.expected_delivery_time || Date.now() + 3*24*3600*1000).toLocaleString('vi-VN')}</p>
+                </div>
+            </div>
+        </div>
+    `;
+
+    if (logs.length > 0) {
+        html += '<div class="border-t border-gray-200 pt-4 space-y-3">';
+        const lastIndex = logs.length - 1;
+
+        logs.forEach((log, index) => {
+            const isLast = index === lastIndex;
+            const isPast = index < lastIndex;
+
+            html += `
+                <div class="flex gap-3 ${isPast ? 'opacity-80' : ''}">
+                    <div class="flex-shrink-0 w-8 h-8 rounded-full ${isLast ? 'bg-indigo-600' : (isPast ? 'bg-green-500' : 'bg-gray-300')} flex items-center justify-center text-white text-xs font-bold">
+                        ${isPast ? '✓' : (isLast ? '●' : index + 1)}
+                    </div>
+                    <div class="flex-1">
+                        <p class="text-xs font-semibold ${isLast ? 'text-indigo-600' : 'text-charcoal'}">${log.description || ''}</p>
+                        <p class="text-[10px] text-muted">${new Date(log.time).toLocaleString('vi-VN')}</p>
+                    </div>
+                </div>
+            `;
+        });
+        html += '</div>';
+    } else {
+        html += '<p class="text-center text-muted text-xs">Chưa có thông tin tracking</p>';
+    }
+
+    document.getElementById('tracking-info').innerHTML = html;
+}
+
+function refreshTracking() {
+    document.getElementById('tracking-info').innerHTML = '<div class="flex items-center justify-center py-8"><div class="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div></div>';
+    loadTracking();
+}
+
+// Load tracking on page load
+loadTracking();
+</script>
+<?php endif; ?>

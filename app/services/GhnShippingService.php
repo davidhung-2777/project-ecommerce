@@ -71,10 +71,16 @@ class GhnShippingService
      */
     public function createShippingOrder(array $data): array
     {
+        // DEMO MODE: Tạo mã vận đơn giả (không gọi API GHN thật)
+        // Bỏ comment dòng dưới khi muốn dùng API thật
+        return $this->createDemoOrder($data);
+        
         try {
             $endpoint = $this->apiUrl . '/v2/shipping-order/create';
             
             $payload = [
+                'shop_id' => (int) $this->shopId,
+                'from_district_id' => $this->fromDistrictId,
                 'to_name' => $data['to_name'],
                 'to_phone' => $data['to_phone'],
                 'to_address' => $data['to_address'],
@@ -107,17 +113,37 @@ class GhnShippingService
     }
     
     /**
+     * Tạo đơn DEMO (không gọi API thật) - dùng cho testing
+     */
+    private function createDemoOrder(array $data): array
+    {
+        // Tạo mã vận đơn giả
+        $orderCode = 'DEMO' . strtoupper(substr(md5(time() . rand()), 0, 8));
+        
+        return [
+            'success' => true,
+            'order_code' => $orderCode,
+            'expected_delivery_time' => date('Y-m-d H:i:s', strtotime('+3 days')),
+        ];
+    }
+    
+    /**
      * Tracking đơn hàng
      */
-    public function trackOrder(string $orderCode): array
+    public function trackOrder(string $orderCode, string $orderStatus = 'pending'): array
     {
+        // Nếu là mã DEMO, trả về data giả với status sync từ database
+        if (str_starts_with($orderCode, 'DEMO')) {
+            return $this->trackDemoOrder($orderCode, $orderStatus);
+        }
+
         try {
             $endpoint = $this->apiUrl . '/v2/shipping-order/detail';
-            
+
             $payload = ['order_code' => $orderCode];
-            
+
             $response = $this->makeRequest('POST', $endpoint, $payload);
-            
+
             return [
                 'success' => true,
                 'data' => $response['data'] ?? [],
@@ -128,6 +154,61 @@ class GhnShippingService
                 'message' => $e->getMessage(),
             ];
         }
+    }
+    
+    /**
+     * Tracking đơn DEMO
+     */
+    private function trackDemoOrder(string $orderCode, string $orderStatus = 'pending'): array
+    {
+        // Map order status sang tracking status của GHN
+        $statusMap = [
+            'pending' => 'ready_to_pick',
+            'confirmed' => 'ready_to_pick',
+            'processing' => 'picking',
+            'shipped' => 'delivering',
+            'delivered' => 'delivered',
+            'cancelled' => 'cancelled',
+        ];
+
+        $trackingStatus = $statusMap[$orderStatus] ?? 'ready_to_pick';
+
+        $statusTextMap = [
+            'ready_to_pick' => 'Chờ lấy hàng',
+            'picking' => 'Shipper đang đến lấy hàng',
+            'picked' => 'Đã lấy hàng thành công',
+            'storing' => 'Hàng đang ở kho GHN',
+            'delivering' => 'Đang giao hàng',
+            'delivered' => 'Đã giao hàng thành công',
+            'cancelled' => 'Đã hủy',
+        ];
+
+        // Tạo data tracking giả dựa trên status thực tế
+        $allStatuses = [
+            ['status' => 'ready_to_pick', 'time' => date('Y-m-d H:i:s'), 'description' => 'Đơn hàng đã được tạo'],
+            ['status' => 'picking', 'time' => date('Y-m-d H:i:s', strtotime('+1 hour')), 'description' => 'Shipper đang đến lấy hàng'],
+            ['status' => 'picked', 'time' => date('Y-m-d H:i:s', strtotime('+2 hours')), 'description' => 'Đã lấy hàng thành công'],
+            ['status' => 'storing', 'time' => date('Y-m-d H:i:s', strtotime('+4 hours')), 'description' => 'Hàng đang ở kho GHN'],
+            ['status' => 'delivering', 'time' => date('Y-m-d H:i:s', strtotime('+1 day')), 'description' => 'Đang giao hàng'],
+            ['status' => 'delivered', 'time' => date('Y-m-d H:i:s', strtotime('+2 days')), 'description' => 'Đã giao hàng thành công'],
+        ];
+
+        // Chỉ hiển thị các status đã đạt được theo order status hiện tại
+        $statusOrder = ['ready_to_pick', 'picking', 'picked', 'storing', 'delivering', 'delivered'];
+        $currentIndex = array_search($trackingStatus, $statusOrder);
+        $visibleStatuses = array_slice($allStatuses, 0, $currentIndex + 1);
+
+        return [
+            'success' => true,
+            'data' => [
+                'order_code' => $orderCode,
+                'status' => $trackingStatus,
+                'status_text' => $statusTextMap[$trackingStatus] ?? 'Đang xử lý',
+                'expected_delivery_time' => date('Y-m-d H:i:s', strtotime('+3 days')),
+                'log' => $visibleStatuses,
+                'note' => '⚠️ ĐÂY LÀ ĐƠN DEMO - Tracking đồng bộ với trạng thái đơn hàng trong hệ thống',
+            ],
+        ];
     }
     
     /**

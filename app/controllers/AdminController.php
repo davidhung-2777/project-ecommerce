@@ -344,11 +344,27 @@ class AdminController extends Controller
     public function updateOrderStatus(string $id): void
     {
         $this->requireAdmin();
+        
+        // Log for debugging
+        error_log("=== UPDATE ORDER STATUS DEBUG ===");
+        error_log("Order ID: " . $id);
+        error_log("POST data: " . print_r($_POST, true));
+        error_log("Request method: " . $_SERVER['REQUEST_METHOD']);
+        
         $status = $this->post('status');
+        error_log("Status value: " . var_export($status, true));
+        
         $valid  = ['pending','confirmed','processing','shipped','delivered','cancelled'];
 
         if (!in_array($status, $valid)) {
-            $this->json(['success' => false, 'message' => 'Trạng thái không hợp lệ.']);
+            error_log("VALIDATION FAILED - Status '$status' not in valid array");
+            $this->json(['success' => false, 'message' => 'Trạng thái không hợp lệ: ' . $status]);
+        }
+
+        // Lấy thông tin đơn hàng trước khi cập nhật
+        $order = $this->orderModel->find((int) $id);
+        if (!$order) {
+            $this->json(['success' => false, 'message' => 'Đơn hàng không tồn tại']);
         }
 
         $data = ['status' => $status];
@@ -356,8 +372,177 @@ class AdminController extends Controller
         if ($status === 'delivered')  $data['delivered_at']  = date('Y-m-d H:i:s');
         if ($status === 'cancelled')  $data['cancelled_at']  = date('Y-m-d H:i:s');
 
+        // Tự động cập nhật payment_status sang 'paid' khi đơn COD được giao thành công
+        if ($status === 'delivered' && $order['payment_method'] === 'cod' && $order['payment_status'] === 'pending') {
+            $data['payment_status'] = 'paid';
+            $data['paid_at'] = date('Y-m-d H:i:s');
+            error_log("Auto-updating COD payment status to 'paid' for delivered order");
+        }
+
+        error_log("Updating order with data: " . print_r($data, true));
+        $this->orderModel->update((int) $id, $data);
+        error_log("Update successful");
+        $this->json(['success' => true]);
+    }
+
+    /**
+     * Cập nhật trạng thái thanh toán (đánh dấu đã thu COD)
+     */
+    public function updatePaymentStatus(string $id): void
+    {
+        $this->requireAdmin();
+
+        $paymentStatus = $this->post('payment_status');
+        $valid = ['paid', 'pending']; // Database enum: pending, paid, failed, refunded
+
+        if (!in_array($paymentStatus, $valid)) {
+            $this->json(['success' => false, 'message' => 'Trạng thái thanh toán không hợp lệ']);
+        }
+
+        $order = $this->orderModel->find((int) $id);
+        if (!$order) {
+            $this->json(['success' => false, 'message' => 'Đơn hàng không tồn tại']);
+        }
+
+        // Chỉ cho phép cập nhật thanh toán COD
+        if ($order['payment_method'] !== 'cod') {
+            $this->json(['success' => false, 'message' => 'Chỉ có thể cập nhật thanh toán thủ công cho đơn COD']);
+        }
+
+        $data = ['payment_status' => $paymentStatus];
+        if ($paymentStatus === 'paid') {
+            $data['paid_at'] = date('Y-m-d H:i:s');
+        } else {
+            $data['paid_at'] = null; // Reset paid_at khi rollback về pending
+        }
+
         $this->orderModel->update((int) $id, $data);
         $this->json(['success' => true]);
+    }
+
+    /**
+     * Tạo đơn vận chuyển GHN
+     */
+    public function createGHNShippingOrder(string $id): void
+    {
+        header('Content-Type: application/json');
+        $this->requireAdmin();
+        
+        try {
+            $orderId = (int) $id;
+            
+            // 1. Lấy thông tin đơn hàng đầy đủ
+            $order = $this->orderModel->getFullOrder($orderId);
+            if (!$order) {
+                echo json_encode(['success' => false, 'message' => 'Đơn hàng không tồn tại']);
+                exit;
+            }
+            
+            // 2. Kiểm tra đã tạo đơn GHN chưa
+            if (!empty($order['shipping_code'])) {
+                echo json_encode([
+                    'success' => true, 
+                    'shipping_code' => $order['shipping_code'],
+                    'message' => 'Đơn hàng đã có mã vận đơn: ' . $order['shipping_code']
+                ]);
+                exit;
+            }
+            
+            // 3. Kiểm tra trạng thái đơn hàng
+            if (!in_array($order['status'], ['confirmed', 'processing'])) {
+                echo json_encode([
+                    'success' => false,
+                    'message' => 'Chỉ có thể tạo đơn GHN cho đơn hàng đã xác nhận hoặc đang xử lý'
+                ]);
+                exit;
+            }
+            
+            // 4. Validate và format số điện thoại
+            $phone = preg_replace('/[^0-9]/', '', $order['shipping_phone']);
+            if (strlen($phone) < 10 || strlen($phone) > 11) {
+                echo json_encode([
+                    'success' => false,
+                    'message' => 'Số điện thoại không hợp lệ. Yêu cầu 10-11 số'
+                ]);
+                exit;
+            }
+            if (!str_starts_with($phone, '0')) {
+                $phone = '0' . $phone;
+            }
+            
+            // 5. Cắt ngắn địa chỉ nếu quá dài (GHN giới hạn 64 ký tự)
+            $address = $order['shipping_address'];
+            if (mb_strlen($address) > 64) {
+                $address = mb_substr($address, 0, 61) . '...';
+            }
+            
+            // 6. Validate thông tin địa chỉ GHN
+            if (empty($order['shipping_ward_code']) || empty($order['shipping_district_id'])) {
+                echo json_encode([
+                    'success' => false,
+                    'message' => 'Thiếu thông tin mã phường/quận. Vui lòng cập nhật địa chỉ đơn hàng'
+                ]);
+                exit;
+            }
+            
+            // 7. Chuẩn bị data cho GHN
+            $ghn = new \App\Services\GhnShippingService();
+            
+            // Lấy items từ order
+            $items = $order['items'] ?? [];
+            $ghnItems = [];
+            $totalWeight = 0;
+            
+            foreach ($items as $item) {
+                $ghnItems[] = [
+                    'name' => mb_substr($item['product_name'] ?? 'Sản phẩm', 0, 50),
+                    'quantity' => (int) ($item['quantity'] ?? 1),
+                    'price' => (int) ($item['unit_price'] ?? 0),
+                ];
+                $totalWeight += 500 * (int) ($item['quantity'] ?? 1);
+            }
+            
+            // 8. Gọi API tạo đơn GHN
+            $result = $ghn->createShippingOrder([
+                'to_name' => mb_substr($order['shipping_name'], 0, 50),
+                'to_phone' => $phone,
+                'to_address' => $address,
+                'to_ward_code' => $order['shipping_ward_code'],
+                'to_district_id' => (int) $order['shipping_district_id'],
+                'weight' => max(500, $totalWeight),
+                'length' => 20,
+                'width' => 20,
+                'height' => 10,
+                'cod_amount' => ($order['payment_method'] === 'cod' && $order['payment_status'] === 'unpaid') ? (int) $order['total_amount'] : 0,
+                'payment_type_id' => ($order['payment_method'] === 'cod' && $order['payment_status'] === 'unpaid') ? 2 : 1,
+                'required_note' => 'CHOXEMHANGKHONGTHU',
+                'items' => $ghnItems,
+            ]);
+            
+            // 9. Lưu mã vận đơn vào database
+            if ($result['success'] && !empty($result['order_code'])) {
+                $this->orderModel->update($orderId, [
+                    'shipping_code' => $result['order_code'],
+                ]);
+                
+                echo json_encode([
+                    'success' => true,
+                    'message' => 'Tạo đơn GHN thành công!',
+                    'shipping_code' => $result['order_code'],
+                ]);
+            } else {
+                echo json_encode([
+                    'success' => false,
+                    'message' => $result['message'] ?? 'Lỗi khi tạo đơn GHN',
+                ]);
+            }
+            
+        } catch (\Exception $e) {
+            echo json_encode([
+                'success' => false,
+                'message' => 'Lỗi: ' . $e->getMessage(),
+            ]);
+        }
     }
 
     // ── Quotes ────────────────────────────────────────────────────────────────
@@ -721,5 +906,56 @@ class AdminController extends Controller
         }
 
         return $paths;
+    }
+
+    /**
+     * Trang tạo đơn GHN hàng loạt
+     */
+    public function ghnBulkCreate(): void
+    {
+        $this->requireAdmin();
+
+        // Lấy danh sách đơn hàng đã xác nhận nhưng chưa có mã vận đơn GHN
+        $db = \App\Core\Database::getInstance();
+        $orders = $db->fetchAll(
+            "SELECT o.* 
+             FROM orders o
+             WHERE o.status IN ('confirmed', 'processing')
+               AND (o.shipping_code IS NULL OR o.shipping_code = '')
+             ORDER BY o.created_at DESC"
+        );
+
+        $this->view('pages/ghn-bulk-create', compact('orders'));
+    }
+    
+    /**
+     * Tracking đơn hàng GHN
+     */
+    public function trackGHNOrder(string $id): void
+    {
+        $this->requireAdmin();
+        
+        $orderId = (int) $id;
+        $order = $this->orderModel->getFullOrder($orderId);
+        
+        if (!$order) {
+            header('Location: ' . ($_ENV['APP_URL'] ?? '') . '/admin/orders');
+            exit;
+        }
+        
+        if (empty($order['shipping_code'])) {
+            $_SESSION['flash'] = [
+                'type' => 'error',
+                'message' => 'Đơn hàng chưa có mã vận đơn GHN'
+            ];
+            header('Location: ' . ($_ENV['APP_URL'] ?? '') . '/admin/orders/' . $orderId);
+            exit;
+        }
+        
+        // Gọi API tracking
+        $ghn = new \App\Services\GhnShippingService();
+        $tracking = $ghn->trackOrder($order['shipping_code']);
+        
+        $this->view('pages/order-tracking', compact('order', 'tracking'));
     }
 }

@@ -52,6 +52,7 @@ class App
         
         // Webhooks (Public endpoints - NO AUTH REQUIRED)
         $r->post('/webhook/sepay',            'WebhookController',  'sepay');
+        $r->get('/webhook/sepay',             'WebhookController',  'test'); // For SePay dashboard test button
         $r->get('/webhook/sepay/test',        'WebhookController',  'test');
         $r->post('/webhook/momo',             'PaymentController',  'momoIpn');
         $r->post('/webhook/vnpay',            'PaymentController',  'vnpayIpn');
@@ -115,7 +116,13 @@ class App
 
         $r->get('/admin/orders',              'AdminController',    'orders');
         $r->get('/admin/orders/:id',          'AdminController',    'orderDetail');
+        $r->get('/admin/orders/:id/tracking', 'AdminController',    'trackGHNOrder');
         $r->post('/admin/orders/:id/status',  'AdminController',    'updateOrderStatus');
+        $r->post('/admin/orders/:id/payment-status', 'AdminController', 'updatePaymentStatus');
+        $r->post('/admin/orders/:id/create-ghn-order', 'AdminController', 'createGHNShippingOrder');
+        
+        // GHN Bulk Create
+        $r->get('/admin/ghn/bulk-create',     'AdminController',    'ghnBulkCreate');
 
         $r->get('/admin/quotes',              'AdminController',    'quotes');
         $r->get('/admin/quotes/:id',          'AdminController',    'quoteDetail');

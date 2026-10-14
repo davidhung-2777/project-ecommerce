@@ -17,10 +17,27 @@ $statusLabels = ['pending' => 'Chờ xác nhận', 'confirmed' => 'Đã xác nh�
                 <option value="<?= $v ?>" <?= $order['status'] === $v ? 'selected' : '' ?>><?= $l ?></option>
                 <?php endforeach; ?>
             </select>
-            <button onclick="updateOrderStatus(<?= $order['id'] ?>)"
+            <button onclick="updateOrderStatusFromDropdown(<?= $order['id'] ?>)"
                     class="bg-charcoal text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-wooddk transition">
                 Cập nhật
             </button>
+            
+            <?php if (empty($order['shipping_code']) && in_array($order['status'], ['confirmed', 'processing'])): ?>
+            <button onclick="createGHNOrder(<?= $order['id'] ?>)"
+                    class="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition">
+                🚚 Tạo đơn GHN
+            </button>
+            <?php elseif (!empty($order['shipping_code'])): ?>
+            <div class="flex items-center gap-3">
+                <div class="px-3 py-2 bg-green-50 text-green-700 rounded-lg text-sm font-medium">
+                    ✓ Mã vận đơn: <?= htmlspecialchars($order['shipping_code']) ?>
+                </div>
+                <a href="<?= $base ?>/admin/orders/<?= $order['id'] ?>/tracking"
+                   class="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-indigo-700 transition">
+                    📍 Tracking
+                </a>
+            </div>
+            <?php endif; ?>
         </div>
     </div>
 
@@ -32,10 +49,18 @@ $statusLabels = ['pending' => 'Chờ xác nhận', 'confirmed' => 'Đã xác nh�
                 <div class="flex justify-between"><dt class="text-muted">Mã đơn</dt><dd class="font-medium"><?= $order['order_number'] ?></dd></div>
                 <div class="flex justify-between"><dt class="text-muted">Loại HĐ</dt><dd><?= $order['invoice_type'] === 'vat' ? 'Hóa đơn VAT' : 'Hóa đơn bán lẻ' ?></dd></div>
                 <div class="flex justify-between"><dt class="text-muted">PTTT</dt><dd><?= ['cod' => 'COD', 'bank_transfer' => 'Chuyển khoản', 'momo' => 'MoMo', 'vnpay' => 'VNPay'][$order['payment_method']] ?></dd></div>
-                <div class="flex justify-between"><dt class="text-muted">TT Thanh toán</dt>
-                    <dd><span class="px-2 py-0.5 rounded text-xs <?= $order['payment_status'] === 'paid' ? 'bg-green-50 text-green-700' : 'bg-yellow-50 text-yellow-700' ?>">
-                        <?= $order['payment_status'] === 'paid' ? 'Đã thanh toán' : 'Chưa thanh toán' ?>
-                    </span></dd>
+                <div class="flex justify-between items-center"><dt class="text-muted">TT Thanh toán</dt>
+                    <dd class="flex items-center gap-2">
+                        <span class="px-2 py-0.5 rounded text-xs <?= $order['payment_status'] === 'paid' ? 'bg-green-50 text-green-700' : 'bg-yellow-50 text-yellow-700' ?>">
+                            <?= $order['payment_status'] === 'paid' ? 'Đã thanh toán' : 'Chưa thanh toán' ?>
+                        </span>
+                        <?php if ($order['payment_method'] === 'cod' && $order['payment_status'] === 'pending'): ?>
+                        <button onclick="updatePaymentStatus(<?= $order['id'] ?>, 'paid')"
+                                class="text-xs bg-green-600 text-white px-2 py-1 rounded hover:bg-green-700">
+                            ✓ Đã thu COD
+                        </button>
+                        <?php endif; ?>
+                    </dd>
                 </div>
                 <div class="flex justify-between"><dt class="text-muted">Ngày tạo</dt><dd class="text-xs"><?= date('d/m/Y H:i', strtotime($order['created_at'])) ?></dd></div>
             </dl>
@@ -48,8 +73,17 @@ $statusLabels = ['pending' => 'Chờ xác nhận', 'confirmed' => 'Đã xác nh�
                 <p class="font-medium"><?= htmlspecialchars($order['shipping_name']) ?></p>
                 <p class="text-muted"><?= htmlspecialchars($order['shipping_phone']) ?></p>
                 <p class="text-muted"><?= htmlspecialchars($order['shipping_address']) ?></p>
-                <?php if ($order['shipping_city']): ?>
-                <p class="text-muted"><?= htmlspecialchars($order['shipping_city']) ?><?= $order['shipping_district'] ? ', ' . $order['shipping_district'] : '' ?></p>
+                <?php if ($order['shipping_ward'] || $order['shipping_district'] || $order['shipping_city']): ?>
+                <p class="text-muted">
+                    <?php
+                    $addressParts = array_filter([
+                        $order['shipping_ward'] ?? '',
+                        $order['shipping_district'] ?? '',
+                        $order['shipping_city'] ?? ''
+                    ]);
+                    echo htmlspecialchars(implode(', ', $addressParts));
+                    ?>
+                </p>
                 <?php endif; ?>
             </div>
             <?php if ($order['customer_note']): ?>
@@ -131,7 +165,7 @@ $statusLabels = ['pending' => 'Chờ xác nhận', 'confirmed' => 'Đã xác nh�
 </div>
 
 <script>
-function updateOrderStatus(orderId) {
+function updateOrderStatusFromDropdown(orderId) {
     const status = document.getElementById('order-status').value;
     fetch(APP_URL + '/admin/orders/' + orderId + '/status', {
         method: 'POST',
@@ -140,6 +174,62 @@ function updateOrderStatus(orderId) {
     }).then(r => r.json()).then(d => {
         if (d.success) location.reload();
         else alert(d.message || 'Lỗi!');
+    });
+}
+
+function createGHNOrder(orderId) {
+    if (!confirm('Bạn có chắc muốn tạo đơn vận chuyển GHN cho đơn hàng này?')) {
+        return;
+    }
+    
+    const button = event.target;
+    const originalText = button.innerHTML;
+    button.disabled = true;
+    button.innerHTML = '⏳ Đang tạo...';
+    
+    fetch(APP_URL + '/admin/orders/' + orderId + '/create-ghn-order', {
+        method: 'POST',
+        headers: { 
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+    })
+    .then(r => r.json())
+    .then(d => {
+        if (d.success) {
+            alert('✓ Tạo đơn GHN thành công!\nMã vận đơn: ' + d.shipping_code);
+            location.reload();
+        } else {
+            alert('❌ Lỗi: ' + (d.message || 'Không thể tạo đơn GHN'));
+            button.disabled = false;
+            button.innerHTML = originalText;
+        }
+    })
+    .catch(err => {
+        alert('❌ Lỗi kết nối: ' + err.message);
+        button.disabled = false;
+        button.innerHTML = originalText;
+    });
+}
+
+function updatePaymentStatus(orderId, status) {
+    if (!confirm('Bạn có chắc muốn cập nhật trạng thái thanh toán COD thành "Đã thanh toán"?')) {
+        return;
+    }
+    
+    fetch(APP_URL + '/admin/orders/' + orderId + '/payment-status', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-Requested-With': 'XMLHttpRequest' },
+        body: 'payment_status=' + status
+    }).then(r => r.json()).then(d => {
+        if (d.success) {
+            alert('✓ Đã cập nhật trạng thái thanh toán!');
+            location.reload();
+        } else {
+            alert('❌ Lỗi: ' + (d.message || 'Không thể cập nhật'));
+        }
+    }).catch(err => {
+        alert('❌ Lỗi kết nối: ' + err.message);
     });
 }
 </script>
