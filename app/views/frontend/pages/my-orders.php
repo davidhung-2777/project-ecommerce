@@ -1,7 +1,7 @@
 <?php
 $baseUrl   = $_ENV['APP_URL'] ?? 'http://localhost/project-ecommerce/public';
 $pageTitle = 'Đơn Hàng Của Tôi - DecorNest';
-$orders    = $orders ?? $items ?? [];
+$orders    = $orders ?? $data ?? $items ?? [];
 ?>
 
 <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-10 lg:py-16">
